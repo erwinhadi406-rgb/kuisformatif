@@ -96,6 +96,26 @@
   .dbtn:focus-visible{outline:3px solid #22d3ee;outline-offset:2px}
   @media(max-width:480px){.dlg-actions{flex-direction:column-reverse}.dbtn{flex-basis:auto}}
   @media(prefers-reduced-motion:reduce){.dlg,.dlg-card,.dbtn{transition:none}}
+  /* ===== Pengaturan AI ===== */
+  .sec .rowline{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px}
+  .sec .rowline input{width:20px;height:20px;margin:0}
+  .mrow{display:flex;gap:8px;margin-top:6px}
+  .mrow select{flex:1;min-width:0}
+  .mrow .sbtn{flex:none;width:48px;padding:0}
+  .kwrap{position:relative;margin-top:6px}
+  .kwrap input{padding-right:48px}
+  .kwrap button{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:36px;border:none;background:none;font-size:18px;cursor:pointer}
+  #ai-test-result{margin-top:8px}
+  .tres{font-size:14px;font-weight:700;padding:8px 12px;border-radius:10px}
+  .tres.ok{background:rgba(34,197,94,.18);color:#86efac}
+  .tres.bad{background:rgba(239,68,68,.2);color:#fca5a5}
+  .spin{display:inline-block;animation:aispin .8s linear infinite}
+  @keyframes aispin{to{transform:rotate(360deg)}}
+  .aitoast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:120;max-width:min(92vw,520px);padding:10px 18px;border-radius:14px;font-weight:700;font-size:15px;color:#fff;background:#1f3a4d;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+  .aitoast.bad{background:#b91c1c}
+  .aitoast[hidden]{display:none}
+  #aiCfgNote{margin:6px 0 8px}
+  @media(prefers-reduced-motion:reduce){.spin{animation:none}}
   @media(max-width:640px){.ogrid,.agrid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -142,6 +162,7 @@
   <h2>⚙️ Pengaturan Soal</h2>
   <div class="stabs" role="tablist" aria-label="Bagian pengaturan">
     <button class="stab" role="tab" data-go="umum">⚙️ Umum</button>
+    <button class="stab" role="tab" data-go="aiset">🔑 Pengaturan AI</button>
     <button class="stab" role="tab" data-go="ai">🤖 Generate Soal AI</button>
     <button class="stab" role="tab" data-go="soal">📝 Daftar Soal</button>
   </div>
@@ -154,9 +175,45 @@
     <label>Jumlah soal per permainan (untuk soal buatan saya)<input type="number" id="setTotal" min="1" max="50"></label>
     <label>Lama menahan telunjuk (detik, 0.5–3)<input type="number" id="setDwell" min="0.5" max="3" step="0.1"></label>
   </div>
+  <div class="sec" data-tab="aiset" hidden>
+    <h3>🔑 Pengaturan AI</h3>
+    <p class="small">Dipakai oleh tab Generate Soal AI. Disimpan hanya di browser perangkat ini.</p>
+    <form id="ai-form" autocomplete="off">
+      <label class="rowline"><span>Aktifkan Asisten AI</span><input type="checkbox" id="ai-enabled"></label>
+      <label>Penyedia AI
+        <select id="ai-provider">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic Claude</option>
+        </select>
+      </label>
+      <label>Model
+        <div class="mrow">
+          <select id="ai-model-select"></select>
+          <button type="button" class="sbtn" id="btn-ai-refresh" title="Muat daftar model dari akun Anda" aria-label="Refresh daftar model"><span id="ai-refresh-icon">🔄</span></button>
+        </div>
+        <input type="text" id="ai-model" placeholder="Ketik ID model, mis. nama-model" hidden style="margin-top:8px">
+      </label>
+      <p class="small" id="ai-models-hint"></p>
+      <label>API Key
+        <div class="kwrap">
+          <input type="password" id="ai-key" autocomplete="off" placeholder="Tempel API key di sini">
+          <button type="button" id="ai-key-toggle" aria-label="Tampilkan atau sembunyikan API key"><span id="ai-key-eye">👁</span></button>
+        </div>
+      </label>
+      <button type="button" class="sbtn" id="btn-ai-dash" style="width:100%;margin:4px 0 6px">🔗 <span id="ai-dash-label">Buka halaman API Key</span></button>
+      <p class="small">Key dikirim langsung dari browser ke penyedia AI. Jangan disimpan di komputer bersama.</p>
+      <button type="button" class="sbtn" id="btn-ai-test" style="width:100%;margin-top:10px"><span>🔌 Tes Koneksi</span></button>
+      <p id="ai-test-result" hidden></p>
+      <div class="bar">
+        <button type="submit" class="sbtn pri" style="flex:1">💾 Simpan Pengaturan</button>
+        <button type="button" class="sbtn dan" id="btn-ai-clear">Hapus Key</button>
+      </div>
+    </form>
+  </div>
   <div class="sec" id="aiSec" data-tab="ai" hidden>
     <h3>🤖 Generate Soal AI</h3>
-    <p class="small">Isi Mapel, Materi, dan Tujuan Pembelajaran, klik Generate, lalu tinggal Simpan ke localStorage atau Download Word.</p>
+    <p class="small">Atur penyedia, model, dan API key di tab 🔑 Pengaturan AI. Isi Mapel, Materi, dan Tujuan Pembelajaran, klik Generate, lalu tinggal Simpan ke localStorage atau Download Word.</p>
     <div class="agrid">
       <label>Mata pelajaran (Mapel)<input type="text" id="aiMapel" placeholder="mis. IPAS"></label>
       <label>Materi<input type="text" id="aiMateri" placeholder="mis. Pengelompokan hewan berdasarkan makanannya"></label>
@@ -165,18 +222,10 @@
       <label>Tingkat kesulitan<select id="aiLevel"><option>Mudah</option><option selected>Sedang</option><option>Sulit</option></select></label>
       <label>Kelas<select id="aiGrade"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
       <label>Jumlah pilihan jawaban<select id="aiOpt"><option value="3">3 pilihan</option><option value="4" selected>4 pilihan</option></select></label>
-      <label>Penyedia AI<select id="aiProv"><option value="claude">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="local">Tanpa AI (dari bank bawaan)</option></select></label>
+      <label>Sumber soal<select id="aiSrc"><option value="ai">Pakai AI (sesuai tab Pengaturan AI)</option><option value="local">Tanpa AI (dari bank bawaan)</option></select></label>
     </div>
     <label>Catatan tambahan untuk AI (opsional)<input type="text" id="aiNote" placeholder="mis. gunakan hewan khas Indonesia"></label>
-    <div id="aiKeyBox">
-      <label>API key (kosongkan jika sudah terdeteksi)<input type="password" id="aiKey" autocomplete="off" placeholder="Tempel API key di sini"></label>
-      <p class="small" id="aiKeyStatus" aria-live="polite"></p>
-      <button class="sbtn" id="aiKeyOwn" type="button" style="margin:2px 8px 8px 0" hidden>✏️ Pakai API key lain</button>
-      <button class="sbtn dan" id="aiKeyDel" type="button" style="margin:2px 0 8px" hidden>🗑 Hapus API key tersimpan</button>
-      <label>Model<input type="text" id="aiModel"></label>
-      <label><input type="checkbox" id="aiRemember">Simpan API key di browser ini setelah generate berhasil (jangan dicentang di komputer bersama)</label>
-      <p class="small">Key dikirim langsung dari browser ke penyedia AI. Perlu internet.</p>
-    </div>
+    <p class="small" id="aiCfgNote" aria-live="polite"></p>
     <p class="small" id="aiLocalNote" hidden>Tanpa AI: soal diambil dari bank bawaan khusus materi pengelompokan hewan berdasarkan makanan, sehingga isian Mapel, Materi, dan Tujuan Pembelajaran tidak dipakai.</p>
     <div class="bar"><button class="sbtn pri" id="aiGo">✨ Generate</button></div>
     <div id="aiMsg"></div>
@@ -219,6 +268,8 @@
   </div>
   </div>
 </div></div>
+
+<div id="aiToast" class="aitoast" hidden></div>
 
 <div id="dlg" class="dlg" hidden>
   <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgMsg" data-tone="info">
@@ -607,99 +658,310 @@ $("#wFile").onchange=async e=>{
 };
 
 /* ---------- Generate Soal AI ---------- */
-const AI_LS="arHewan.ai.v1", AI_KEYS_LS="arHewan.keys.v1";
-const AI_MODEL={claude:"claude-sonnet-5-5",gemini:"gemini-2.5-flash",local:""};
-const AI_NAME={claude:"Claude",gemini:"Gemini"};
-let aiGenerated=[], aiModels={};
+const AI_LS="arHewan.ai.v1";
+let aiGenerated=[];
 const aiMsg=t=>{ $("#aiMsg").textContent=t; };
 const aiTotalN=()=>Math.max(1,Math.min(40,parseInt($("#aiN").value,10)||10));
 
-/* ----- API key tersimpan di localStorage (satu per penyedia) ----- */
-function readKeys(){ try{ const k=JSON.parse(localStorage.getItem(AI_KEYS_LS)||"{}"); return k&&typeof k==="object"?k:{}; }catch(e){ return {}; } }
-function writeKeys(k){ try{ localStorage.setItem(AI_KEYS_LS,JSON.stringify(k)); return true; }catch(e){ return false; } }
-/* ----- Konfigurasi dari aplikasi induk (jika game ini di-embed lewat iframe) ----- */
-let hostKeys={}, hostModels={}, hostApplied=false, useOwn=false;
-const normProv=v=>{ v=String(v||"").toLowerCase(); return /claude|anthropic/.test(v)?"claude":/gemini|google/.test(v)?"gemini":null; };
-const savedKey=prov=>String((!useOwn&&hostKeys[prov])||readKeys()[prov]||"");
-const maskKey=k=>k.length>12?k.slice(0,6)+"…"+k.slice(-4):"••••";
-function detectProvider(key){            // tebak penyedia dari awalan key
-  if(/^sk-ant-/i.test(key)) return "claude";
-  if(/^AIza[\w-]{20,}/.test(key)) return "gemini";
-  return null;
+/* ===== PENGATURAN AI (klon dari index induk: UI + JS) ===== */
+// Pengganti objek `state` & `ui` milik aplikasi induk. Nama pengguna diambil dari sesi bila ada
+// (origin sama), sehingga kunci penyimpanan identik dengan index induk: katalog_ai_settings_<username>.
+const state={ currentUser:(()=>{ try{ const s=JSON.parse(localStorage.getItem("katalog_admin_session")||"null"); return s&&s.username||null; }catch(e){ return null; } })() };
+const ui={
+  showToast(message,type="success"){
+    const t=$("#aiToast"); t.textContent=message; t.className="aitoast "+(type==="error"?"bad":"ok"); t.hidden=false;
+    clearTimeout(this._t); this._t=setTimeout(()=>{ t.hidden=true; },3200);
+  },
+  hideAiModal(){}   // di game ini panelnya tetap terbuka di tab
+};
+const ai = {
+    defaults: { enabled: false, provider: 'gemini', model: '', key: '' },
+    // Model default (dipakai jika pilihan "Default" dipilih)
+    models: { gemini: 'gemini-3.1-flash-lite', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5' },
+    // Daftar bawaan; tekan tombol refresh untuk memuat daftar asli dari akun
+    presets: {
+        gemini:    ['gemini-3.1-pro-preview', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite'],
+        openai:    ['gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4o-mini'],
+        anthropic: ['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']
+    },
+    dashboards: {
+        gemini:    { name: 'Google AI Studio',   url: 'https://aistudio.google.com/apikey' },
+        openai:    { name: 'OpenAI Platform',    url: 'https://platform.openai.com/api-keys' },
+        anthropic: { name: 'Anthropic Console',  url: 'https://console.anthropic.com/settings/keys' }
+    },
+    openDashboard() {
+        const d = this.dashboards[document.getElementById('ai-provider').value];
+        const w = 520, h = 700;
+        const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - w) / 2));
+        const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - h) / 2));
+        const win = window.open(d.url, 'ai_key_dashboard', `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+        if (!win) {
+            ui.showToast('Pop-up diblokir browser. Izinkan pop-up untuk situs ini.', 'error');
+            return;
+        }
+        try { win.opener = null; } catch (e) {}
+        win.focus();
+        ui.showToast(`Buka ${d.name}, buat API key, lalu tempel di sini.`);
+    },
+
+    storageKey() { return 'katalog_ai_settings_' + (state.currentUser || 'anon'); },
+    load() {
+        try { return { ...this.defaults, ...JSON.parse(localStorage.getItem(this.storageKey()) || '{}') }; }
+        catch (e) { return { ...this.defaults }; }
+    },
+    fillForm() {
+        const c = this.load();
+        document.getElementById('ai-enabled').checked = c.enabled;
+        document.getElementById('ai-provider').value = c.provider;
+        document.getElementById('ai-key').value = c.key;
+        this.updateProviderLabels();
+        this.renderModelSelect(c.provider, c.model);
+        this.clearTestResult();
+    },
+    updateProviderLabels() {
+        const p = document.getElementById('ai-provider').value;
+        document.getElementById('ai-model').placeholder = 'Ketik ID model';
+        document.getElementById('ai-dash-label').innerText = 'Buka ' + this.dashboards[p].name + ' (ambil API Key)';
+    },
+    onProviderChange() {
+        const p = document.getElementById('ai-provider').value;
+        this.updateProviderLabels();
+        this.renderModelSelect(p, '');
+        this.clearTestResult();
+    },
+
+    // ----- Pilihan model -----
+    cacheKey(p) { return 'katalog_ai_models_' + p; },
+    loadCache(p) {
+        try { return JSON.parse(localStorage.getItem(this.cacheKey(p)) || 'null'); } catch (e) { return null; }
+    },
+    renderModelSelect(provider, selected) {
+        const cached = this.loadCache(provider);
+        const list = (cached && cached.list && cached.list.length) ? cached.list : this.presets[provider];
+        const sel = document.getElementById('ai-model-select');
+        sel.innerHTML = '';
+        const add = (value, label) => {
+            const o = document.createElement('option');
+            o.value = value; o.textContent = label;
+            sel.appendChild(o);
+        };
+        add('', 'Default (' + this.models[provider] + ')');
+        list.forEach(id => add(id, id));
+        if (selected && !list.includes(selected)) add(selected, selected + ' (tersimpan)');
+        add('__manual', '✏️ Ketik manual...');
+        sel.value = selected || '';
+        if (sel.value !== (selected || '')) sel.value = '';
+        document.getElementById('ai-model').hidden = true;
+        const hint = document.getElementById('ai-models-hint');
+        hint.innerText = (cached && cached.list && cached.list.length)
+            ? `${cached.list.length} model dari akun Anda (diperbarui ${new Date(cached.at).toLocaleString('id-ID')}).`
+            : 'Daftar bawaan. Isi API Key lalu tekan tombol refresh untuk memuat model yang tersedia di akun Anda.';
+    },
+    onModelSelect() {
+        const manual = document.getElementById('ai-model-select').value === '__manual';
+        const input = document.getElementById('ai-model');
+        input.hidden = !manual;
+        if (manual) input.focus();
+    },
+    getModel() {
+        const v = document.getElementById('ai-model-select').value;
+        return v === '__manual' ? document.getElementById('ai-model').value.trim() : v;
+    },
+
+    // ----- Helper jaringan -----
+    async readJson(res) { try { return await res.json(); } catch (e) { return {}; } },
+    httpError(res, data) {
+        const err = new Error(data?.error?.message || res.statusText || 'Permintaan gagal');
+        err.status = res.status;
+        return err;
+    },
+    errMsg(e) {
+        if (e instanceof TypeError) return 'Tidak bisa terhubung ke server (cek internet, pemblokir iklan, atau pengaturan jaringan).';
+        return (e.status ? `[${e.status}] ` : '') + e.message;
+    },
+
+    // ----- Ambil daftar model dari akun -----
+    async fetchModels(provider, key) {
+        if (provider === 'gemini') {
+            let names = [], token = '';
+            for (let i = 0; i < 5; i++) {
+                const url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : '');
+                const res = await fetch(url, { headers: { 'x-goog-api-key': key } });
+                const data = await this.readJson(res);
+                if (!res.ok) throw this.httpError(res, data);
+                (data.models || []).forEach(m => {
+                    const id = (m.name || '').replace(/^models\//, '');
+                    const ok = (m.supportedGenerationMethods || []).includes('generateContent');
+                    if (ok && /^gemini/.test(id) && !/(image|tts|live|embed|audio|robotics|computer-use|veo|imagen)/.test(id)) names.push(id);
+                });
+                token = data.nextPageToken || '';
+                if (!token) break;
+            }
+            return [...new Set(names)].sort().reverse();
+        }
+        if (provider === 'openai') {
+            const res = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': 'Bearer ' + key } });
+            const data = await this.readJson(res);
+            if (!res.ok) throw this.httpError(res, data);
+            return (data.data || [])
+                .filter(m => /^(gpt-|o\d|chatgpt)/.test(m.id) && !/(audio|realtime|transcribe|tts|image|embedding|moderation|search|instruct|codex|dall|whisper|davinci|babbage)/.test(m.id))
+                .sort((a, b) => (b.created || 0) - (a.created || 0))
+                .map(m => m.id);
+        }
+        const res = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+            headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        });
+        const data = await this.readJson(res);
+        if (!res.ok) throw this.httpError(res, data);
+        return (data.data || []).map(m => m.id);
+    },
+    async refreshModels() {
+        const provider = document.getElementById('ai-provider').value;
+        const key = document.getElementById('ai-key').value.trim();
+        if (!key) { ui.showToast('Isi API Key dulu untuk memuat daftar model', 'error'); return; }
+        const btn = document.getElementById('btn-ai-refresh');
+        const icon = document.getElementById('ai-refresh-icon');
+        btn.disabled = true;
+        icon.classList.add('spin');
+        try {
+            const list = await this.fetchModels(provider, key);
+            if (!list.length) throw new Error('Tidak ada model yang cocok di akun ini.');
+            localStorage.setItem(this.cacheKey(provider), JSON.stringify({ list, at: Date.now() }));
+            this.renderModelSelect(provider, this.getModel());
+            ui.showToast(`${list.length} model ditemukan di akun Anda`);
+        } catch (e) {
+            ui.showToast('Gagal memuat model: ' + this.errMsg(e), 'error');
+        } finally {
+            btn.disabled = false;
+            icon.classList.remove('spin');
+        }
+    },
+
+    // ----- Tes koneksi -----
+    clearTestResult() {
+        const el = document.getElementById('ai-test-result');
+        if (el) { el.hidden = true; el.innerText = ''; }
+    },
+    showTestResult(ok, msg) {
+        const el = document.getElementById('ai-test-result');
+        el.hidden = false; el.className = 'tres ' + (ok ? 'ok' : 'bad');
+        el.innerText = msg;
+    },
+    async pingModel(provider, key, model) {
+        const prompt = 'Balas hanya dengan kata: OK';
+        let res, data;
+        if (provider === 'gemini') {
+            res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+                body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] })
+            });
+            data = await this.readJson(res);
+            if (!res.ok) throw this.httpError(res, data);
+            return (data.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('').trim();
+        }
+        if (provider === 'openai') {
+            res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+            });
+            data = await this.readJson(res);
+            if (!res.ok) throw this.httpError(res, data);
+            return (data.choices?.[0]?.message?.content || '').trim();
+        }
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({ model, max_tokens: 20, messages: [{ role: 'user', content: prompt }] })
+        });
+        data = await this.readJson(res);
+        if (!res.ok) throw this.httpError(res, data);
+        return (data.content || []).map(b => b.text || '').join('').trim();
+    },
+    async testConnection() {
+        const provider = document.getElementById('ai-provider').value;
+        const key = document.getElementById('ai-key').value.trim();
+        if (!key) { this.showTestResult(false, '✕ Isi API Key dulu.'); return; }
+        const model = this.getModel() || this.models[provider];
+        const btn = document.getElementById('btn-ai-test');
+        const label = btn.querySelector('span');
+        btn.disabled = true;
+        label.innerText = '⏳ Menguji...';
+                this.clearTestResult();
+        const t0 = performance.now();
+        try {
+            const reply = await this.pingModel(provider, key, model);
+            const ms = Math.round(performance.now() - t0);
+            this.showTestResult(true, `✓ Terhubung. Model "${model}" merespons dalam ${ms} ms${reply ? ' (balasan: ' + reply.slice(0, 40) + ')' : ''}.`);
+        } catch (e) {
+            let hint = '';
+            if (e.status === 404) hint = ' Model tidak tersedia atau sudah dihentikan, tekan tombol refresh untuk memuat daftar model akun Anda.';
+            else if (e.status === 401 || e.status === 403) hint = ' Periksa kembali API Key.';
+            else if (e.status === 429) hint = ' Kuota atau batas permintaan tercapai.';
+            this.showTestResult(false, '✕ ' + this.errMsg(e) + hint);
+        } finally {
+            btn.disabled = false;
+            label.innerText = '🔌 Tes Koneksi';
+                    }
+    },
+
+    saveSettings() {
+        const c = {
+            enabled: document.getElementById('ai-enabled').checked,
+            provider: document.getElementById('ai-provider').value,
+            model: this.getModel(),
+            key: document.getElementById('ai-key').value.trim()
+        };
+        if (c.enabled && !c.key) { ui.showToast('Isi API Key dulu untuk mengaktifkan AI', 'error'); return; }
+        try {
+            localStorage.setItem(this.storageKey(), JSON.stringify(c));
+            ui.showToast('Pengaturan AI disimpan!');
+            ui.hideAiModal();
+        } catch (e) { ui.showToast('Gagal menyimpan pengaturan', 'error'); }
+    },
+    clearKey() {
+        const c = this.load();
+        c.key = ''; c.enabled = false;
+        localStorage.setItem(this.storageKey(), JSON.stringify(c));
+        this.fillForm();
+        ui.showToast('API Key dihapus');
+    },
+    toggleKey() {
+        const i = document.getElementById('ai-key');
+        const show = i.type === 'password';
+        i.type = show ? 'text' : 'password';
+        document.getElementById('ai-key-eye').textContent = show ? '🙈' : '👁';
+    }
+};
+
+const PNAME={gemini:"Google Gemini",openai:"OpenAI",anthropic:"Anthropic Claude"};
+function aiCfgNote(){
+  const el=$("#aiCfgNote");
+  if($("#aiSrc").value==="local"){ el.textContent=""; return; }
+  const c=ai.load();
+  el.textContent=(c.enabled&&c.key)
+    ? `🔗 Memakai ${PNAME[c.provider]} • model ${c.model||ai.models[c.provider]} (dari tab Pengaturan AI).`
+    : "⚠️ Asisten AI belum aktif atau API Key belum diisi. Buka tab 🔑 Pengaturan AI, isi, lalu klik Simpan Pengaturan.";
 }
-function aiKeyStatus(){
-  const prov=$("#aiProv").value, st=$("#aiKeyStatus"), del=$("#aiKeyDel"), own=$("#aiKeyOwn");
-  const kl=$("#aiKey").closest("label"), rl=$("#aiRemember").closest("label");
-  const fromHost=prov!=="local"&&!!hostKeys[prov]&&!useOwn;
-  kl.hidden=fromHost; rl.hidden=fromHost;
-  own.hidden=prov==="local"||!hostKeys[prov];
-  own.textContent=useOwn?"↩️ Pakai key dari aplikasi induk":"✏️ Pakai API key lain";
-  if(prov==="local"){ st.textContent=""; del.hidden=true; return; }
-  const k=savedKey(prov), typed=$("#aiKey").value.trim(), kk=readKeys()[prov];
-  if(fromHost) st.textContent=`🔗 API key & model ${AI_NAME[prov]} diambil otomatis dari pengaturan AI aplikasi induk (${maskKey(hostKeys[prov])}).`;
-  else if(typed) st.textContent="✏️ Memakai key yang baru diketik"+($("#aiRemember").checked?" (disimpan setelah generate berhasil).":" (tidak disimpan).");
-  else if(kk) st.textContent=`🔑 API key ${AI_NAME[prov]} terdeteksi di browser ini (${maskKey(kk)}). Tidak perlu diisi lagi.`;
-  else st.textContent=`Belum ada API key ${AI_NAME[prov]} tersimpan. Tempel key di atas.`;
-  del.hidden=!kk||fromHost;
-}
-/* Terima konfigurasi AI dari aplikasi induk lewat postMessage */
-function applyHostConfig(d){
-  const add=(pv,k,m)=>{ if(!pv) return; if(k) hostKeys[pv]=String(k).trim(); if(m){ hostModels[pv]=String(m).trim(); aiModels[pv]=hostModels[pv]; } };
-  const main=normProv(d.provider)||detectProvider(String(d.apiKey||"").trim());
-  add(main,d.apiKey,d.model);
-  if(d.keys&&typeof d.keys==="object") ["claude","gemini"].forEach(pv=>add(pv,d.keys[pv],d.models&&d.models[pv]));
-  if(!Object.keys(hostKeys).length&&!Object.keys(hostModels).length) return;
-  const cur=$("#aiProv").value;
-  if(!hostApplied){
-    const pick=(main&&(hostKeys[main]||hostModels[main])&&main)||["claude","gemini"].find(x=>hostKeys[x]);
-    if(pick) $("#aiProv").value=pick;
-  }else if(cur!=="local"&&hostModels[cur]) $("#aiModel").value=hostModels[cur];
-  hostApplied=true;
-  const p=$("#aiProv").value;
-  if(p!=="local"){ $("#aiModel").value=aiModels[p]||AI_MODEL[p]||""; }
-  aiProvChanged(true); aiSavePrefs();
-}
-window.addEventListener("message",e=>{
-  if(e.source!==window.parent||window.parent===window) return;
-  const d=e.data; if(d&&d.type==="ar-hewan:ai-config") applyHostConfig(d);
-});
-function requestHostConfig(tries){
-  if(window.parent===window||hostApplied||tries<=0) return;
-  try{ window.parent.postMessage({type:"ar-hewan:request-ai-config"},"*"); }catch(e){}
-  setTimeout(()=>requestHostConfig(tries-1),1200);   // ulangi jika induk belum siap
-}
-function aiProvChanged(keep){
-  const p=$("#aiProv").value;
-  $("#aiKeyBox").hidden=p==="local"; $("#aiLocalNote").hidden=p!=="local";
-  if(!keep){ $("#aiModel").value=aiModels[p]||AI_MODEL[p]||""; $("#aiKey").value=""; }
-  aiKeyStatus();
-}
+function aiSrcChanged(){ $("#aiLocalNote").hidden=$("#aiSrc").value!=="local"; aiCfgNote(); }
 function aiLoadPrefs(){
   let p={}; try{ p=JSON.parse(localStorage.getItem(AI_LS)||"{}")||{}; }catch(e){}
-  if(p.key){   // migrasi format lama (satu key di prefs) ke penyimpanan per penyedia
-    const old=p.prov&&p.prov!=="local"?p.prov:(detectProvider(p.key)||"claude"), ks=readKeys();
-    if(!ks[old]){ ks[old]=p.key; writeKeys(ks); }
-    delete p.key; try{ localStorage.setItem(AI_LS,JSON.stringify(p)); }catch(e){}
-  }
-  aiModels=Object.assign({},p.models||{});
-  if(p.model&&p.prov&&p.prov!=="local"&&!aiModels[p.prov]) aiModels[p.prov]=p.model;
-  const keys=readKeys();
-  let prov=p.prov||"claude";
-  if(prov!=="local"&&!keys[prov]){ const other=["claude","gemini"].find(x=>keys[x]); if(other) prov=other; }  // pilih penyedia yang key-nya sudah tersimpan
-  $("#aiProv").value=prov;
+  if(p.src) $("#aiSrc").value=p.src;
   if(p.level) $("#aiLevel").value=p.level;
   if(p.grade) $("#aiGrade").value=p.grade;
   if(p.opt) $("#aiOpt").value=p.opt;
   ["Mapel","Materi","Tp"].forEach(k=>{ const v=p[k.toLowerCase()]; if(v!=null) $("#ai"+k).value=v; });
   if(p.n) $("#aiN").value=p.n;
-  $("#aiRemember").checked=p.remember!==false;
-  $("#aiModel").value=aiModels[prov]||AI_MODEL[prov]||"";
-  aiProvChanged(true);
+  aiSrcChanged();
 }
 function aiSavePrefs(){
-  const prov=$("#aiProv").value;
-  if(prov!=="local") aiModels[prov]=$("#aiModel").value.trim();
-  const p={prov,level:$("#aiLevel").value,grade:$("#aiGrade").value,opt:$("#aiOpt").value,n:aiTotalN(),mapel:$("#aiMapel").value.trim(),materi:$("#aiMateri").value.trim(),tp:$("#aiTp").value.trim(),models:aiModels,remember:$("#aiRemember").checked};
+  const p={src:$("#aiSrc").value,level:$("#aiLevel").value,grade:$("#aiGrade").value,opt:$("#aiOpt").value,n:aiTotalN(),mapel:$("#aiMapel").value.trim(),materi:$("#aiMateri").value.trim(),tp:$("#aiTp").value.trim()};
   try{ localStorage.setItem(AI_LS,JSON.stringify(p)); }catch(e){}
 }
 function buildAiPrompt(info,level,grade,optN,note){
@@ -722,11 +984,17 @@ Keluarkan HANYA JSON valid (tanpa markdown dan tanpa teks lain) dengan bentuk:
 {"questions":[{"emoji":"🙂","text":"...","options":["..."],"answer":"...","fb":"..."}]}`;
 }
 async function callAI(prov,key,model,prompt){
-  if(prov==="claude"){
+  if(prov==="anthropic"){
     const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model,max_tokens:6000,messages:[{role:"user",content:prompt}]})});
     const j=await res.json().catch(()=>({}));
     if(!res.ok) throw new Error(j.error?.message||("HTTP "+res.status));
     return (j.content||[]).map(b=>b.text||"").join("");
+  }
+  if(prov==="openai"){
+    const res=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model,messages:[{role:"user",content:prompt}]})});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(j.error?.message||("HTTP "+res.status));
+    return j.choices?.[0]?.message?.content||"";
   }
   const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"content-type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:.8}})});
   const j=await res.json().catch(()=>({}));
@@ -769,34 +1037,33 @@ function renderAiResult(){
 }
 const aiSelected=()=>[...$("#aiList").querySelectorAll("input:checked")].map(e=>aiGenerated[+e.dataset.i]);
 
-$("#aiProv").onchange=()=>aiProvChanged(false);
-$("#aiModel").addEventListener("input",()=>{ const p=$("#aiProv").value; if(p!=="local") aiModels[p]=$("#aiModel").value.trim(); });
-$("#aiRemember").addEventListener("change",()=>{ aiKeyStatus(); aiSavePrefs(); });
-$("#aiKey").addEventListener("input",()=>{      // deteksi otomatis penyedia dari key yang ditempel
-  const typed=$("#aiKey").value, d=detectProvider(typed.trim());
-  if(d&&d!==$("#aiProv").value){
-    $("#aiProv").value=d; aiProvChanged(false); $("#aiKey").value=typed;
-    aiMsg(`ℹ️ Key terdeteksi sebagai key ${AI_NAME[d]}, penyedia dipindah otomatis.`);
-  }
-  aiKeyStatus();
-});
-$("#aiKeyOwn").onclick=()=>{ useOwn=!useOwn; $("#aiKey").value=""; aiKeyStatus(); };
-$("#aiKeyDel").onclick=async()=>{
-  const prov=$("#aiProv").value;
-  if(!(await uiDialog({icon:"🔑",title:`Hapus API key ${AI_NAME[prov]}?`,message:"Key yang tersimpan di browser ini akan dihapus. Kamu perlu menempelkannya lagi untuk generate soal.",confirmText:"Ya, hapus",cancelText:"Batal",tone:"danger"}))) return;
-  const ks=readKeys(); delete ks[prov]; writeKeys(ks); aiKeyStatus(); aiMsg("✅ API key tersimpan sudah dihapus.");
-};
+
+/* Wiring Pengaturan AI (modul tidak bisa memakai onclick inline) */
+$("#ai-provider").addEventListener("change",()=>ai.onProviderChange());
+$("#ai-model-select").addEventListener("change",()=>ai.onModelSelect());
+$("#btn-ai-refresh").addEventListener("click",()=>ai.refreshModels());
+$("#btn-ai-dash").addEventListener("click",()=>ai.openDashboard());
+$("#ai-key-toggle").addEventListener("click",()=>ai.toggleKey());
+$("#btn-ai-test").addEventListener("click",()=>ai.testConnection());
+$("#ai-form").addEventListener("submit",e=>{ e.preventDefault(); ai.saveSettings(); aiCfgNote(); });
+$("#btn-ai-clear").addEventListener("click",()=>{ ai.clearKey(); aiCfgNote(); });
+document.querySelectorAll(".stab").forEach(b=>b.addEventListener("click",aiCfgNote));
+$("#aiSrc").addEventListener("change",aiSrcChanged);
+
 $("#aiGo").onclick=async()=>{
-  const prov=$("#aiProv").value, optN=+$("#aiOpt").value, n=aiTotalN(); $("#aiN").value=n;
+  const src=$("#aiSrc").value, optN=+$("#aiOpt").value, n=aiTotalN(); $("#aiN").value=n;
   const mapel=$("#aiMapel").value.trim(), materi=$("#aiMateri").value.trim(), tp=$("#aiTp").value.trim();
-  if(prov!=="local"&&(!mapel||!materi||!tp)){ aiMsg("⚠️ Isi Mapel, Materi, dan Tujuan Pembelajaran dulu."); return; }
-  const typed=$("#aiKey").value.trim(), key=typed||savedKey(prov), model=$("#aiModel").value.trim();
-  if(prov!=="local"&&!key){ aiMsg("⚠️ Belum ada API key. Tempel API key dulu."); return; }
-  if(prov!=="local"&&!model){ aiMsg("⚠️ Isi nama model dulu."); return; }
+  let prov="", key="", model="";
+  if(src!=="local"){
+    if(!mapel||!materi||!tp){ aiMsg("⚠️ Isi Mapel, Materi, dan Tujuan Pembelajaran dulu."); return; }
+    const c=ai.load();
+    if(!c.enabled||!c.key){ aiMsg("⚠️ Aktifkan Asisten AI dan isi API Key di tab 🔑 Pengaturan AI, lalu klik Simpan Pengaturan."); return; }
+    prov=c.provider; key=c.key; model=c.model||ai.models[prov];
+  }
   const btn=$("#aiGo"); btn.disabled=true; btn.textContent="⏳ Membuat soal…"; aiMsg("");
   try{
     let qs, skipped=0;
-    if(prov==="local"){
+    if(src==="local"){
       qs=genLocal(n,optN).map(cleanQuestion).filter(Boolean);
     }else{
       const raw=await callAI(prov,key,model,buildAiPrompt({n,mapel,materi,tp},$("#aiLevel").value,$("#aiGrade").value,optN,$("#aiNote").value.trim()));
@@ -806,12 +1073,10 @@ $("#aiGo").onclick=async()=>{
     const seen=new Set(); qs=qs.filter(q=>{ const k=q.text.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
     if(!qs.length) throw new Error("tidak ada soal valid yang dihasilkan");
     aiGenerated=qs; renderAiResult();
-    let keyNote="";
-    if(prov!=="local"&&typed&&$("#aiRemember").checked){ const ks=readKeys(); ks[prov]=typed; if(writeKeys(ks)){ $("#aiKey").value=""; keyNote=" API key disimpan di browser ini."; } }
-    aiSavePrefs(); aiKeyStatus();
-    aiMsg(`✅ ${qs.length} soal berhasil dibuat`+(skipped?` (${skipped} soal tidak valid dibuang)`:"")+(prov==="local"?" (dari bank bawaan: pengelompokan hewan)":"")+". Periksa, lalu Simpan atau Download Word."+keyNote);
+    aiSavePrefs();
+    aiMsg(`✅ ${qs.length} soal berhasil dibuat`+(skipped?` (${skipped} soal tidak valid dibuang)`:"")+(src==="local"?" (dari bank bawaan: pengelompokan hewan)":"")+". Periksa, lalu Simpan atau Download Word.");
     $("#aiResult").scrollIntoView({behavior:"smooth",block:"nearest"});
-  }catch(e){ aiMsg("⚠️ Gagal generate: "+e.message+(!typed&&prov!=="local"&&/api.?key|auth|401|403|invalid|permission|credential/i.test(e.message)?" — API key tersimpan mungkin tidak valid. Tempel key baru atau hapus key tersimpan.":"")); }
+  }catch(e){ aiMsg("⚠️ Gagal generate: "+e.message+(/api.?key|auth|401|403|invalid|permission|credential/i.test(e.message)?" — periksa API Key di tab 🔑 Pengaturan AI (bisa pakai Tes Koneksi).":"")); }
   finally{ btn.disabled=false; btn.textContent="✨ Generate"; }
 };
 $("#aiSave").onclick=()=>{
@@ -830,7 +1095,7 @@ $("#aiWord").onclick=async()=>{
   catch(e){ aiMsg("⚠️ Gagal membuat Word (perlu internet untuk memuat pustaka): "+e.message); }
 };
 aiLoadPrefs();
-requestHostConfig(6);
+ai.fillForm();
 
 loadSettings();
 function startGame(){
