@@ -72,6 +72,7 @@
   .stab[aria-selected=true]{background:linear-gradient(135deg,#22c55e,#16a34a);color:#04210f}
   .stab:focus-visible{outline:3px solid #22d3ee;outline-offset:2px}
   .sec[hidden]{display:none}
+  .sec label[hidden],.sbtn[hidden]{display:none}
   .sfoot{position:sticky;bottom:0;z-index:5;margin-top:8px;padding:10px 0 4px;background:linear-gradient(to top,rgba(8,30,45,.99) 78%,rgba(8,30,45,0))}
   .sfoot .bar{margin:6px 0 0}
   @media(prefers-reduced-motion:reduce){.stab{transition:none}}
@@ -170,6 +171,7 @@
     <div id="aiKeyBox">
       <label>API key (kosongkan jika sudah terdeteksi)<input type="password" id="aiKey" autocomplete="off" placeholder="Tempel API key di sini"></label>
       <p class="small" id="aiKeyStatus" aria-live="polite"></p>
+      <button class="sbtn" id="aiKeyOwn" type="button" style="margin:2px 8px 8px 0" hidden>✏️ Pakai API key lain</button>
       <button class="sbtn dan" id="aiKeyDel" type="button" style="margin:2px 0 8px" hidden>🗑 Hapus API key tersimpan</button>
       <label>Model<input type="text" id="aiModel"></label>
       <label><input type="checkbox" id="aiRemember">Simpan API key di browser ini setelah generate berhasil (jangan dicentang di komputer bersama)</label>
@@ -615,7 +617,10 @@ const aiTotalN=()=>Math.max(1,Math.min(40,parseInt($("#aiN").value,10)||10));
 /* ----- API key tersimpan di localStorage (satu per penyedia) ----- */
 function readKeys(){ try{ const k=JSON.parse(localStorage.getItem(AI_KEYS_LS)||"{}"); return k&&typeof k==="object"?k:{}; }catch(e){ return {}; } }
 function writeKeys(k){ try{ localStorage.setItem(AI_KEYS_LS,JSON.stringify(k)); return true; }catch(e){ return false; } }
-const savedKey=prov=>String(readKeys()[prov]||"");
+/* ----- Konfigurasi dari aplikasi induk (jika game ini di-embed lewat iframe) ----- */
+let hostKeys={}, hostModels={}, hostApplied=false, useOwn=false;
+const normProv=v=>{ v=String(v||"").toLowerCase(); return /claude|anthropic/.test(v)?"claude":/gemini|google/.test(v)?"gemini":null; };
+const savedKey=prov=>String((!useOwn&&hostKeys[prov])||readKeys()[prov]||"");
 const maskKey=k=>k.length>12?k.slice(0,6)+"…"+k.slice(-4):"••••";
 function detectProvider(key){            // tebak penyedia dari awalan key
   if(/^sk-ant-/i.test(key)) return "claude";
@@ -623,13 +628,45 @@ function detectProvider(key){            // tebak penyedia dari awalan key
   return null;
 }
 function aiKeyStatus(){
-  const prov=$("#aiProv").value, st=$("#aiKeyStatus"), del=$("#aiKeyDel");
+  const prov=$("#aiProv").value, st=$("#aiKeyStatus"), del=$("#aiKeyDel"), own=$("#aiKeyOwn");
+  const kl=$("#aiKey").closest("label"), rl=$("#aiRemember").closest("label");
+  const fromHost=prov!=="local"&&!!hostKeys[prov]&&!useOwn;
+  kl.hidden=fromHost; rl.hidden=fromHost;
+  own.hidden=prov==="local"||!hostKeys[prov];
+  own.textContent=useOwn?"↩️ Pakai key dari aplikasi induk":"✏️ Pakai API key lain";
   if(prov==="local"){ st.textContent=""; del.hidden=true; return; }
-  const k=savedKey(prov), typed=$("#aiKey").value.trim();
-  if(typed) st.textContent="✏️ Memakai key yang baru diketik"+($("#aiRemember").checked?" (disimpan setelah generate berhasil).":" (tidak disimpan).");
-  else if(k) st.textContent=`🔑 API key ${AI_NAME[prov]} terdeteksi di browser ini (${maskKey(k)}). Tidak perlu diisi lagi.`;
+  const k=savedKey(prov), typed=$("#aiKey").value.trim(), kk=readKeys()[prov];
+  if(fromHost) st.textContent=`🔗 API key & model ${AI_NAME[prov]} diambil otomatis dari pengaturan AI aplikasi induk (${maskKey(hostKeys[prov])}).`;
+  else if(typed) st.textContent="✏️ Memakai key yang baru diketik"+($("#aiRemember").checked?" (disimpan setelah generate berhasil).":" (tidak disimpan).");
+  else if(kk) st.textContent=`🔑 API key ${AI_NAME[prov]} terdeteksi di browser ini (${maskKey(kk)}). Tidak perlu diisi lagi.`;
   else st.textContent=`Belum ada API key ${AI_NAME[prov]} tersimpan. Tempel key di atas.`;
-  del.hidden=!k;
+  del.hidden=!kk||fromHost;
+}
+/* Terima konfigurasi AI dari aplikasi induk lewat postMessage */
+function applyHostConfig(d){
+  const add=(pv,k,m)=>{ if(!pv) return; if(k) hostKeys[pv]=String(k).trim(); if(m){ hostModels[pv]=String(m).trim(); aiModels[pv]=hostModels[pv]; } };
+  const main=normProv(d.provider)||detectProvider(String(d.apiKey||"").trim());
+  add(main,d.apiKey,d.model);
+  if(d.keys&&typeof d.keys==="object") ["claude","gemini"].forEach(pv=>add(pv,d.keys[pv],d.models&&d.models[pv]));
+  if(!Object.keys(hostKeys).length&&!Object.keys(hostModels).length) return;
+  const cur=$("#aiProv").value;
+  if(!hostApplied){
+    const pick=(main&&(hostKeys[main]||hostModels[main])&&main)||["claude","gemini"].find(x=>hostKeys[x]);
+    if(pick) $("#aiProv").value=pick;
+  }else if(cur!=="local"&&hostModels[cur]) $("#aiModel").value=hostModels[cur];
+  hostApplied=true;
+  const p=$("#aiProv").value;
+  if(p!=="local"){ $("#aiModel").value=aiModels[p]||AI_MODEL[p]||""; }
+  aiProvChanged(true); aiSavePrefs();
+}
+window.addEventListener("message",e=>{
+  if(e.source!==window.parent||window.parent===window) return;
+  const d=e.data; if(d&&d.type==="ar-hewan:ai-config") applyHostConfig(d);
+});
+function requestHostConfig(tries){
+  if(window.parent===window||hostApplied||tries<=0) return;
+  try{ window.parent.postMessage({type:"ar-hewan:request-ai-config"},"*"); }catch(e){}
+  setTimeout(()=>requestHostConfig(tries-1),1200);   // ulangi jika induk belum siap
 }
 function aiProvChanged(keep){
   const p=$("#aiProv").value;
@@ -743,6 +780,7 @@ $("#aiKey").addEventListener("input",()=>{      // deteksi otomatis penyedia dar
   }
   aiKeyStatus();
 });
+$("#aiKeyOwn").onclick=()=>{ useOwn=!useOwn; $("#aiKey").value=""; aiKeyStatus(); };
 $("#aiKeyDel").onclick=async()=>{
   const prov=$("#aiProv").value;
   if(!(await uiDialog({icon:"🔑",title:`Hapus API key ${AI_NAME[prov]}?`,message:"Key yang tersimpan di browser ini akan dihapus. Kamu perlu menempelkannya lagi untuk generate soal.",confirmText:"Ya, hapus",cancelText:"Batal",tone:"danger"}))) return;
@@ -792,6 +830,7 @@ $("#aiWord").onclick=async()=>{
   catch(e){ aiMsg("⚠️ Gagal membuat Word (perlu internet untuk memuat pustaka): "+e.message); }
 };
 aiLoadPrefs();
+requestHostConfig(6);
 
 loadSettings();
 function startGame(){
