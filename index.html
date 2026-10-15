@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Kuis Formatif</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0b1d2a;font-family:"Nunito","Segoe UI",system-ui,sans-serif;color:#fff;user-select:none}
+  #video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#0b1d2a}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;background:rgba(8,30,45,.82);z-index:20}
+  .overlay.hidden{display:none}
+  .overlay h1{font-size:clamp(28px,5vw,52px);line-height:1.1}
+  .overlay p{max-width:640px;font-size:clamp(15px,2vw,20px);opacity:.92}
+  .big-emoji{font-size:clamp(56px,9vw,96px)}
+  .btn{position:relative;overflow:hidden;border:2px solid rgba(255,255,255,.7);background:rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:clamp(18px,2.4vw,26px);font-family:inherit;padding:18px 34px;border-radius:22px;cursor:pointer;backdrop-filter:blur(8px)}
+  .btn:hover{background:rgba(255,255,255,.3)}
+  .fill{position:absolute;left:0;bottom:0;height:8px;width:0;background:#22d3ee;pointer-events:none}
+  #hud{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(960px,94vw);z-index:10;background:linear-gradient(135deg,#1f3a4d,#324a5e);border-radius:18px;padding:12px 22px 14px;box-shadow:0 8px 30px rgba(0,0,0,.4);border-top:5px solid #22c55e}
+  #hud.hidden{display:none}
+  .row{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:700;opacity:.9}
+  .pill{background:#0f2a1f;color:#22c55e;padding:4px 14px;border-radius:99px}
+  #qwrap{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:6px}
+  #qemoji{font-size:clamp(40px,7vh,64px)}
+  #qtext{font-size:clamp(20px,3.4vh,34px);font-weight:800}
+  #fb{min-height:22px;margin-top:4px;text-align:center;font-weight:700;font-size:clamp(14px,2vh,18px)}
+  .opt{position:fixed;width:min(23vw,320px);height:min(17vh,150px);display:flex;align-items:center;justify-content:center;border-radius:22px;border:2px solid rgba(255,255,255,.6);background:rgba(255,255,255,.28);backdrop-filter:blur(6px);font-size:clamp(20px,3vh,32px);font-weight:800;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:background .15s,transform .15s}
+  .opt.hover{transform:scale(1.05);background:rgba(255,255,255,.42)}
+  .opt.correct{background:#22c55e;border-color:#bbf7d0}
+  .opt.wrong{background:#ef4444;border-color:#fecaca}
+  .pos-tl{left:3vw;top:24vh}.pos-tr{right:3vw;top:24vh}
+  .pos-bl{left:3vw;bottom:6vh}.pos-br{right:3vw;bottom:6vh}
+  .pos-bc{left:50%;margin-left:calc(min(23vw,320px)/-2);bottom:4vh}
+  #cursor{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:4px solid #fff;background:rgba(34,211,238,.55);box-shadow:0 0 0 4px rgba(34,211,238,.45),0 0 24px #22d3ee;z-index:200;pointer-events:none;display:none}
+  #status{position:fixed;left:12px;bottom:10px;font-size:13px;opacity:.85;z-index:30;background:rgba(0,0,0,.4);padding:4px 10px;border-radius:10px}
+  #quit{position:fixed;top:14px;left:14px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.3);color:#fff;font-size:20px;cursor:pointer;z-index:30}
+  .stars{font-size:clamp(36px,6vw,64px);letter-spacing:6px}
+  #gear{position:fixed;top:14px;right:14px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.3);color:#fff;font-size:20px;cursor:pointer;z-index:30}
+  #gear.hidden{display:none}
+  #settings{position:fixed;inset:0;z-index:60;background:rgba(8,30,45,.97);overflow:auto;padding:20px}
+  #settings.hidden{display:none}
+  .sbox{max-width:900px;margin:0 auto;text-align:left}
+  .sbox h2{font-size:26px;margin-bottom:12px}
+  .sbox h3{font-size:18px;margin-bottom:4px}
+  .sec{background:rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+  .sec label{display:block;margin:6px 0;font-weight:600}
+  .sbox input[type=text],.sbox input[type=number]{background:#fff;color:#111;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font:inherit;font-size:15px;width:100%}
+  .sbox input[type=radio]{accent-color:#22c55e;margin-right:6px}
+  .qcard{background:rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-bottom:10px}
+  .qhead{display:flex;gap:8px;margin-bottom:8px}
+  .qhead .emo{width:70px;flex:none;text-align:center;font-size:20px}
+  .ogrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .sec .oitem{display:flex;align-items:center;gap:6px;margin:0}
+  .sbtn{border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer;background:#334155;color:#fff}
+  .sbtn.pri{background:#22c55e;color:#04210f}
+  .sbtn.dan{background:#ef4444}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .del{background:#ef4444;border:none;border-radius:8px;color:#fff;padding:0 12px;cursor:pointer;flex:none}
+  #serr{color:#fca5a5;font-weight:700;min-height:22px}
+  .small{font-size:13px;opacity:.8}
+  .sbox input[type=password],.sbox select{background:#fff;color:#111;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font:inherit;font-size:15px;width:100%}
+  .sbox input[type=checkbox]{accent-color:#22c55e;margin-right:6px}
+  .agrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin-bottom:6px}
+  #aiMsg{font-weight:700;min-height:22px;margin:6px 0}
+  .sbox textarea{background:#fff;color:#111;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font:inherit;font-size:15px;width:100%;resize:vertical;min-height:72px}
+  .agrid label.full{grid-column:1/-1}
+  /* ===== Tab pengaturan ===== */
+  .stabs{position:sticky;top:0;z-index:5;display:flex;gap:6px;margin:0 0 14px;padding:10px 0 8px;background:rgba(8,30,45,.98);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .stabs::-webkit-scrollbar{display:none}
+  .stab{flex:1 0 auto;border:none;border-radius:12px;padding:11px 16px;font-weight:800;font-size:15px;font-family:inherit;color:#cbd5e1;background:rgba(255,255,255,.08);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+  .stab:hover{background:rgba(255,255,255,.16)}
+  .stab[aria-selected=true]{background:linear-gradient(135deg,#22c55e,#16a34a);color:#04210f}
+  .stab:focus-visible{outline:3px solid #22d3ee;outline-offset:2px}
+  .sec[hidden]{display:none}
+  .sfoot{position:sticky;bottom:0;z-index:5;margin-top:8px;padding:10px 0 4px;background:linear-gradient(to top,rgba(8,30,45,.99) 78%,rgba(8,30,45,0))}
+  .sfoot .bar{margin:6px 0 0}
+  @media(prefers-reduced-motion:reduce){.stab{transition:none}}
+  .aitem{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.08);margin-bottom:6px;font-size:14px}
+  .aitem input{margin-top:3px}
+  /* ===== Dialog in-frame (pengganti alert/confirm browser) ===== */
+  .dlg{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(4,14,22,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .18s}
+  .dlg[hidden]{display:none}
+  .dlg.show{opacity:1}
+  .dlg-card{width:min(92vw,460px);max-height:90vh;overflow:auto;text-align:center;padding:clamp(20px,4vh,32px) clamp(18px,4vw,30px);border-radius:28px;background:linear-gradient(160deg,rgba(31,58,77,.97),rgba(14,32,46,.97));border:1px solid rgba(255,255,255,.22);box-shadow:0 24px 70px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.18);transform:translateY(14px) scale(.94);transition:transform .22s cubic-bezier(.2,1.2,.4,1)}
+  .dlg.show .dlg-card{transform:none}
+  .dlg-icon{width:72px;height:72px;margin:0 auto 12px;display:grid;place-items:center;font-size:36px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.38),rgba(34,211,238,.08));box-shadow:0 0 0 6px rgba(34,211,238,.12)}
+  .dlg-card[data-tone=danger] .dlg-icon{background:radial-gradient(circle,rgba(239,68,68,.42),rgba(239,68,68,.08));box-shadow:0 0 0 6px rgba(239,68,68,.14)}
+  .dlg-card h3{font-size:clamp(20px,3.2vh,26px);margin-bottom:8px}
+  .dlg-card p{font-size:clamp(14px,2vh,17px);line-height:1.5;opacity:.92;white-space:pre-line;overflow-wrap:anywhere}
+  .dlg-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+  .dbtn{position:relative;overflow:hidden;flex:1 1 140px;border:none;border-radius:16px;padding:14px 18px;font-weight:800;font-size:16px;font-family:inherit;cursor:pointer;color:#fff;background:rgba(255,255,255,.14);transition:transform .12s,background .15s}
+  .dbtn:hover,.dbtn.hover{transform:translateY(-2px);background:rgba(255,255,255,.26)}
+  .dbtn.pri{background:linear-gradient(135deg,#22c55e,#16a34a)}
+  .dlg-card[data-tone=danger] .dbtn.pri{background:linear-gradient(135deg,#ef4444,#dc2626)}
+  .dbtn:focus-visible{outline:3px solid #22d3ee;outline-offset:2px}
+  @media(max-width:480px){.dlg-actions{flex-direction:column-reverse}.dbtn{flex-basis:auto}}
+  @media(prefers-reduced-motion:reduce){.dlg,.dlg-card,.dbtn{transition:none}}
+  @media(max-width:640px){.ogrid,.agrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<video id="video" playsinline muted></video>
+<div id="cursor"></div>
+<button id="quit" title="Keluar">✕</button>
+<button id="gear" title="Pengaturan soal">⚙️</button>
+<div id="status">Kamera belum aktif</div>
+
+<div id="hud" class="hidden">
+  <div class="row"><span id="score">Skor: 0</span><span class="pill" id="qnum">Soal 1/10</span></div>
+  <div id="qwrap"><span id="qemoji"></span><span id="qtext"></span></div>
+  <div id="fb"></div>
+</div>
+<div id="opts"></div>
+
+<div id="intro" class="overlay">
+  <div class="big-emoji">🦁🐄🐔</div>
+  <h1>Game Kuis Formatif</h1>
+  <p class="small" style="font-size:clamp(14px,2vw,18px);opacity:.9">IPAS • Pengelompokan Hewan Berdasarkan Makanannya</p>
+  <p>Jawab soal dengan <b>jari telunjukmu</b>! Arahkan ujung telunjuk ke kotak jawaban dan tahan sekitar 1 detik sampai bar biru penuh.</p>
+  <p>Herbivora 🌿 • Karnivora 🥩 • Omnivora 🍽️</p>
+  <p class="small" id="srcInfo"></p>
+  <button class="btn" id="btnCam">📷 Aktifkan Kamera</button>
+  <button class="btn" id="btnMouse" style="font-size:16px;padding:10px 20px">Main tanpa kamera (mouse/sentuh)</button>
+</div>
+
+<div id="ready" class="overlay hidden">
+  <div class="big-emoji">👆</div>
+  <h1>Coba dulu telunjukmu!</h1>
+  <p>Gerakkan telunjuk sampai lingkaran biru mengikuti jarimu. Lalu arahkan ke tombol di bawah dan tahan.</p>
+  <button class="btn target" id="btnStart">Mulai Bermain<span class="fill"></span></button>
+</div>
+
+<div id="end" class="overlay hidden">
+  <div class="stars" id="stars"></div>
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <button class="btn target" id="btnAgain">Main Lagi<span class="fill"></span></button>
+</div>
+
+<div id="settings" class="hidden"><div class="sbox">
+  <h2>⚙️ Pengaturan Soal</h2>
+  <div class="stabs" role="tablist" aria-label="Bagian pengaturan">
+    <button class="stab" role="tab" data-go="umum">⚙️ Umum</button>
+    <button class="stab" role="tab" data-go="ai">🤖 Generate Soal AI</button>
+    <button class="stab" role="tab" data-go="soal">📝 Daftar Soal</button>
+  </div>
+  <div class="sec" data-tab="umum">
+    <label><input type="radio" name="mode" value="default">Pakai soal bawaan sistem (10 soal acak tentang hewan pemakan)</label>
+    <label><input type="radio" name="mode" value="custom">Pakai soal buatan saya</label>
+    <p class="small">Jika soal buatan kosong atau rusak, game otomatis memakai soal bawaan sistem. Pengaturan tersimpan di browser ini (localStorage).</p>
+  </div>
+  <div class="sec" data-tab="umum">
+    <label>Jumlah soal per permainan (untuk soal buatan saya)<input type="number" id="setTotal" min="1" max="50"></label>
+    <label>Lama menahan telunjuk (detik, 0.5–3)<input type="number" id="setDwell" min="0.5" max="3" step="0.1"></label>
+  </div>
+  <div class="sec" id="aiSec" data-tab="ai" hidden>
+    <h3>🤖 Generate Soal AI</h3>
+    <p class="small">Isi Mapel, Materi, dan Tujuan Pembelajaran, klik Generate, lalu tinggal Simpan ke localStorage atau Download Word.</p>
+    <div class="agrid">
+      <label>Mata pelajaran (Mapel)<input type="text" id="aiMapel" placeholder="mis. IPAS"></label>
+      <label>Materi<input type="text" id="aiMateri" placeholder="mis. Pengelompokan hewan berdasarkan makanannya"></label>
+      <label class="full">Tujuan pembelajaran<textarea id="aiTp" rows="3" placeholder="mis. Peserta didik dapat mengelompokkan hewan berdasarkan jenis makanannya (herbivora, karnivora, omnivora)"></textarea></label>
+      <label>Jumlah soal (1–40)<input type="number" id="aiN" min="1" max="40" value="10"></label>
+      <label>Tingkat kesulitan<select id="aiLevel"><option>Mudah</option><option selected>Sedang</option><option>Sulit</option></select></label>
+      <label>Kelas<select id="aiGrade"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+      <label>Jumlah pilihan jawaban<select id="aiOpt"><option value="3">3 pilihan</option><option value="4" selected>4 pilihan</option></select></label>
+      <label>Penyedia AI<select id="aiProv"><option value="claude">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="local">Tanpa AI (dari bank bawaan)</option></select></label>
+    </div>
+    <label>Catatan tambahan untuk AI (opsional)<input type="text" id="aiNote" placeholder="mis. gunakan hewan khas Indonesia"></label>
+    <div id="aiKeyBox">
+      <label>API key<input type="password" id="aiKey" autocomplete="off" placeholder="Tempel API key di sini"></label>
+      <label>Model<input type="text" id="aiModel"></label>
+      <label><input type="checkbox" id="aiRemember">Ingat API key di browser ini (jangan dicentang di komputer bersama)</label>
+      <p class="small">Key dikirim langsung dari browser ke penyedia AI. Perlu internet.</p>
+    </div>
+    <p class="small" id="aiLocalNote" hidden>Tanpa AI: soal diambil dari bank bawaan khusus materi pengelompokan hewan berdasarkan makanan, sehingga isian Mapel, Materi, dan Tujuan Pembelajaran tidak dipakai.</p>
+    <div class="bar"><button class="sbtn pri" id="aiGo">✨ Generate</button></div>
+    <div id="aiMsg"></div>
+    <div id="aiResult" hidden>
+      <h3>Hasil generate: <span id="aiCount"></span></h3>
+      <p class="small">Hilangkan centang pada soal yang tidak ingin dipakai.</p>
+      <div id="aiList"></div>
+      <label><input type="radio" name="aiMode" value="append" checked>Tambahkan ke soal buatan saya yang sudah ada</label>
+      <label><input type="radio" name="aiMode" value="replace">Ganti semua soal buatan saya</label>
+      <div class="bar">
+        <button class="sbtn pri" id="aiSave">💾 Simpan ke localStorage</button>
+        <button class="sbtn" id="aiWord">📄 Download Word</button>
+      </div>
+    </div>
+  </div>
+  <div class="sec" data-tab="soal" hidden>
+    <h3>Daftar soal buatan saya</h3>
+    <p class="small">Isi 2–4 pilihan, lalu klik tombol bulat di samping pilihan yang benar.</p>
+    <div id="qlist"></div>
+    <div class="bar">
+      <button class="sbtn" id="sAdd">➕ Tambah soal</button>
+      <button class="sbtn" id="sCopy">📋 Salin soal bawaan sebagai contoh</button>
+      <button class="sbtn" id="sExport">⬇ Ekspor JSON</button>
+      <button class="sbtn" id="sImport">⬆ Impor JSON</button>
+      <input type="file" id="sFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="bar">
+      <button class="sbtn" id="wExport">📄 Ekspor Word</button>
+      <button class="sbtn" id="wTemplate">📝 Unduh template Word</button>
+      <button class="sbtn" id="wImport">📥 Impor Word</button>
+      <input type="file" id="wFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+    </div>
+  </div>
+  <div class="sfoot">
+  <div id="serr"></div>
+  <div class="bar">
+    <button class="sbtn pri" id="sSave">💾 Simpan</button>
+    <button class="sbtn" id="sCancel">Batal</button>
+    <button class="sbtn dan" id="sReset">Hapus pengaturan (kembali ke bawaan)</button>
+  </div>
+  </div>
+</div></div>
+
+<div id="dlg" class="dlg" hidden>
+  <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgMsg" data-tone="info">
+    <div class="dlg-icon" id="dlgIcon">💬</div>
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgMsg"></p>
+    <div class="dlg-actions">
+      <button class="dbtn target" id="dlgNo"><span class="lbl"></span><span class="fill"></span></button>
+      <button class="dbtn pri target" id="dlgOk"><span class="lbl"></span><span class="fill"></span></button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ================= BANK SOAL (silakan ubah/tambah) ================= */
+const ANIMALS = [
+  // [emoji, nama, kategori, alasan]
+  ["🐄","Sapi","Herbivora","Sapi memakan rumput."],
+  ["🐐","Kambing","Herbivora","Kambing memakan daun dan rumput."],
+  ["🐇","Kelinci","Herbivora","Kelinci memakan wortel dan sayuran."],
+  ["🦒","Jerapah","Herbivora","Jerapah memakan daun pohon tinggi."],
+  ["🐘","Gajah","Herbivora","Gajah memakan rumput, daun, dan buah."],
+  ["🐴","Kuda","Herbivora","Kuda memakan rumput."],
+  ["🦓","Zebra","Herbivora","Zebra memakan rumput."],
+  ["🐃","Kerbau","Herbivora","Kerbau memakan rumput."],
+  ["🐑","Domba","Herbivora","Domba memakan rumput."],
+  ["🦁","Singa","Karnivora","Singa memakan daging hewan lain."],
+  ["🐅","Harimau","Karnivora","Harimau memakan daging."],
+  ["🐊","Buaya","Karnivora","Buaya memakan ikan dan hewan lain."],
+  ["🦈","Hiu","Karnivora","Hiu memakan ikan dan hewan laut."],
+  ["🐍","Ular","Karnivora","Ular memakan tikus, katak, dan burung."],
+  ["🦅","Elang","Karnivora","Elang memakan ikan, ular, dan tikus."],
+  ["🐺","Serigala","Karnivora","Serigala memakan daging."],
+  ["🐆","Macan Tutul","Karnivora","Macan tutul memakan daging."],
+  ["🐔","Ayam","Omnivora","Ayam memakan biji-bijian dan cacing."],
+  ["🐻","Beruang","Omnivora","Beruang memakan buah, madu, dan ikan."],
+  ["🐷","Babi","Omnivora","Babi memakan tumbuhan dan hewan kecil."],
+  ["🦆","Bebek","Omnivora","Bebek memakan padi, siput, dan ikan kecil."],
+  ["🐒","Monyet","Omnivora","Monyet memakan buah dan serangga."],
+  ["🐭","Tikus","Omnivora","Tikus memakan biji-bijian dan serangga."]
+];
+const CATS = ["Herbivora","Karnivora","Omnivora"];
+const CONCEPTS = [
+  {emoji:"🌿",text:"Hewan pemakan tumbuhan disebut?",answer:"Herbivora",options:CATS,fb:"Herbivora = pemakan tumbuhan."},
+  {emoji:"🥩",text:"Hewan pemakan daging disebut?",answer:"Karnivora",options:CATS,fb:"Karnivora = pemakan daging."},
+  {emoji:"🍽️",text:"Hewan pemakan tumbuhan dan daging disebut?",answer:"Omnivora",options:CATS,fb:"Omnivora = pemakan tumbuhan dan daging."}
+];
+const DEFAULT_TOTAL = 10, NEXT_DELAY = 2300;
+let TOTAL = DEFAULT_TOTAL, DWELL = 1000;
+
+/* ================= UTIL ================= */
+const $ = s => document.querySelector(s);
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]} return a; };
+let actx;
+function beep(f,d=.15,type="sine"){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); const o=actx.createOscillator(),g=actx.createGain(); o.type=type;o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.stop(actx.currentTime+d);}catch(e){} }
+const sfxOK=()=>{beep(660,.12);setTimeout(()=>beep(880,.2),120)};
+const sfxNO=()=>beep(180,.35,"sawtooth");
+
+/* ================= DIALOG IN-FRAME (pengganti alert/confirm) ================= */
+let dlgOpen=false;
+function uiDialog({icon="💬",title="",message="",confirmText="OK",cancelText="Batal",tone="info"}={}){
+  return new Promise(resolve=>{
+    const root=$("#dlg"), card=root.querySelector(".dlg-card"), ok=$("#dlgOk"), no=$("#dlgNo"), prev=document.activeElement;
+    card.dataset.tone=tone;
+    $("#dlgIcon").textContent=icon; $("#dlgTitle").textContent=title; $("#dlgMsg").textContent=message;
+    ok.querySelector(".lbl").textContent=confirmText;
+    no.hidden=!cancelText; if(cancelText) no.querySelector(".lbl").textContent=cancelText;
+    const finish=v=>{
+      dlgOpen=false;
+      ok.removeEventListener("click",onOk); ok.removeEventListener("pick",onOk);
+      no.removeEventListener("click",onNo); no.removeEventListener("pick",onNo);
+      root.removeEventListener("pointerdown",onBackdrop); removeEventListener("keydown",onKey,true);
+      root.classList.remove("show"); setTimeout(()=>{ root.hidden=true; },190);
+      try{ prev&&prev.focus&&prev.focus(); }catch(e){}
+      resolve(v);
+    };
+    const onOk=()=>finish(true), onNo=()=>finish(false);
+    const onBackdrop=e=>{ if(e.target===root) finish(!cancelText); };
+    const onKey=e=>{
+      if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); finish(!cancelText); }
+      else if(e.key==="Enter"&&document.activeElement!==no){ e.preventDefault(); e.stopPropagation(); finish(true); }
+      else if(e.key==="Tab"){ // kunci fokus di dalam dialog
+        const f=[...root.querySelectorAll("button")].filter(b=>!b.hidden); if(!f.length) return;
+        const i=f.indexOf(document.activeElement);
+        e.preventDefault(); f[(i+(e.shiftKey?-1:1)+f.length)%f.length].focus();
+      }
+    };
+    ok.addEventListener("click",onOk); ok.addEventListener("pick",onOk);
+    no.addEventListener("click",onNo); no.addEventListener("pick",onNo);
+    root.addEventListener("pointerdown",onBackdrop); addEventListener("keydown",onKey,true);
+    dlgOpen=true; root.hidden=false;
+    requestAnimationFrame(()=>{ root.classList.add("show"); (tone==="danger"&&cancelText?no:ok).focus(); });
+  });
+}
+
+/* ================= INPUT: TELUNJUK / MOUSE ================= */
+const video=$("#video"), cursorEl=$("#cursor"), statusEl=$("#status");
+let cx=-100, cy=-100, tx=-100, ty=-100, cursorVisible=false, lastSeen=0, camOn=false, landmarker=null, lastVideoTime=-1;
+
+function mapToScreen(lm){
+  const W=innerWidth,H=innerHeight,vw=video.videoWidth||1280,vh=video.videoHeight||720;
+  const s=Math.max(W/vw,H/vh), ox=(W-vw*s)/2, oy=(H-vh*s)/2;
+  return { x: W-(ox+lm.x*vw*s), y: oy+lm.y*vh*s };  // video dicerminkan
+}
+addEventListener("pointermove",e=>{ if(camOn && Date.now()-lastSeen<500) return; tx=e.clientX;ty=e.clientY;lastSeen=Date.now();cursorVisible=true; });
+
+async function startCamera(){
+  statusEl.textContent="Meminta izin kamera…";
+  const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}},audio:false});
+  video.srcObject=stream; await video.play(); camOn=true;
+  statusEl.textContent="Memuat model pelacak tangan…";
+  const {HandLandmarker,FilesetResolver}=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14");
+  const fs=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  const model="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+  try{
+    landmarker=await HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:model,delegate:"GPU"},runningMode:"VIDEO",numHands:1});
+  }catch(e){
+    landmarker=await HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:model,delegate:"CPU"},runningMode:"VIDEO",numHands:1});
+  }
+  statusEl.textContent="Kamera aktif ✓ — acungkan telunjuk";
+}
+
+function detect(){
+  if(!landmarker||video.readyState<2||video.currentTime===lastVideoTime) return;
+  lastVideoTime=video.currentTime;
+  const r=landmarker.detectForVideo(video,performance.now());
+  if(r.landmarks&&r.landmarks.length){
+    const p=mapToScreen(r.landmarks[0][8]); // 8 = ujung jari telunjuk
+    tx=p.x;ty=p.y;cursorVisible=true;lastSeen=Date.now();
+  }
+}
+
+/* ================= DWELL (tahan untuk memilih) ================= */
+let hovered=null, hoverStart=0;
+function activeTargets(){ return [...document.querySelectorAll(".target")].filter(e=>e.getClientRects().length && !e.classList.contains("locked") && (!dlgOpen||e.closest("#dlg"))); }
+function tickDwell(){
+  if(!cursorVisible||(settingsOpen&&!dlgOpen)){ clearHover(); return; }
+  let hit=null;
+  for(const el of activeTargets()){ const b=el.getBoundingClientRect(); if(cx>=b.left&&cx<=b.right&&cy>=b.top&&cy<=b.bottom){hit=el;break;} }
+  if(hit!==hovered){ clearHover(); hovered=hit; hoverStart=performance.now(); if(hit)hit.classList.add("hover"); }
+  if(hovered){
+    const p=Math.min(1,(performance.now()-hoverStart)/DWELL);
+    const f=hovered.querySelector(".fill"); if(f) f.style.width=(p*100)+"%";
+    if(p>=1){ const el=hovered; clearHover(); el.dispatchEvent(new CustomEvent("pick")); }
+  }
+}
+function clearHover(){ if(hovered){hovered.classList.remove("hover");const f=hovered.querySelector(".fill");if(f)f.style.width="0";} hovered=null; }
+
+function loop(){
+  detect();
+  if(cursorVisible && Date.now()-lastSeen>600){ cursorVisible=false; }
+  cx+=(tx-cx)*.55; cy+=(ty-cy)*.55;
+  cursorEl.style.display=cursorVisible?"block":"none";
+  cursorEl.style.transform=`translate(${cx}px,${cy}px)`;
+  tickDwell();
+  requestAnimationFrame(loop);
+}
+
+/* ================= GAME ================= */
+let qs=[], qi=0, score=0, locked=false;
+/* ---------- Pengaturan soal (localStorage) ---------- */
+const LS_KEY="arHewan.pengaturan.v1";
+const defaultSettings=()=>({mode:"default",total:10,dwell:1,questions:[]});
+let settings=defaultSettings(), settingsOpen=false;
+
+function cleanQuestion(q){
+  if(!q||typeof q!=="object") return null;
+  const text=String(q.text??"").trim();
+  const options=[...new Set((Array.isArray(q.options)?q.options:[]).map(o=>String(o??"").trim()).filter(Boolean))].slice(0,4);
+  const answer=String(q.answer??"").trim();
+  if(!text||options.length<2||!options.includes(answer)) return null;
+  return {emoji:String(q.emoji??"").trim().slice(0,8),text,options,answer,fb:String(q.fb??"").trim()};
+}
+function loadSettings(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(LS_KEY)||"null");
+    if(raw&&typeof raw==="object"){
+      const s=defaultSettings();
+      s.mode=raw.mode==="custom"?"custom":"default";
+      const t=parseInt(raw.total,10); if(t>=1&&t<=50) s.total=t;
+      const d=parseFloat(raw.dwell); if(d>=0.5&&d<=3) s.dwell=d;
+      s.questions=(Array.isArray(raw.questions)?raw.questions:[]).map(cleanQuestion).filter(Boolean);
+      settings=s;
+    }
+  }catch(e){ settings=defaultSettings(); }   // data rusak / localStorage diblokir → soal bawaan
+  applySettings();
+}
+function persistSettings(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(settings)); return true; }catch(e){ return false; } }
+function customBank(){ return settings.mode==="custom"&&settings.questions.length?settings.questions:null; }
+function applySettings(){
+  DWELL=settings.dwell*1000;
+  const n=settings.questions.length;
+  $("#srcInfo").textContent=customBank()?`Sumber soal: buatan sendiri (${n} soal)`
+    :settings.mode==="custom"?"Sumber soal: bawaan sistem (soal buatan masih kosong)":"Sumber soal: bawaan sistem";
+}
+function buildQuestions(){
+  const custom=customBank();
+  if(custom){
+    const list=shuffle(custom).slice(0,settings.total).map(q=>({emoji:q.emoji||"❓",text:q.text,options:q.options,answer:q.answer,fb:q.fb}));
+    TOTAL=list.length; return list;
+  }
+  TOTAL=DEFAULT_TOTAL;   // fallback: soal bawaan sistem
+  const animals=shuffle(ANIMALS).slice(0,DEFAULT_TOTAL-CONCEPTS.length).map(a=>({emoji:a[0],text:`${a[1]} termasuk hewan…`,answer:a[2],options:CATS,fb:`${a[3]} → ${a[2]}`}));
+  return shuffle([...animals,...CONCEPTS]);
+}
+
+/* ---------- Editor pengaturan ---------- */
+const listEl=$("#qlist"), errEl=$("#serr");
+function qCard(q={}){
+  const d=document.createElement("div"); d.className="qcard";
+  const uid=Math.random().toString(36).slice(2);
+  const opts=[...(q.options||[]),"","","",""].slice(0,4);
+  const ai=Math.max(0,opts.indexOf(q.answer));
+  d.innerHTML=`<div class="qhead"><input type="text" class="emo" maxlength="8" placeholder="🙂"><input type="text" class="qt" placeholder="Teks soal"><button class="del" title="Hapus soal">🗑</button></div>
+  <div class="ogrid">${opts.map((_,i)=>`<label class="oitem"><input type="radio" name="a${uid}" value="${i}" ${i===ai?"checked":""}><input type="text" class="ot" placeholder="Pilihan ${i+1}${i>1?" (opsional)":""}"></label>`).join("")}</div>
+  <input type="text" class="fbk" placeholder="Penjelasan jawaban (opsional)">`;
+  d.querySelector(".emo").value=q.emoji||"";
+  d.querySelector(".qt").value=q.text||"";
+  d.querySelector(".fbk").value=q.fb||"";
+  d.querySelectorAll(".ot").forEach((e,i)=>e.value=opts[i]);
+  d.querySelector(".del").onclick=()=>d.remove();
+  return d;
+}
+function fillEditor(qs){ listEl.innerHTML=""; qs.forEach(q=>listEl.appendChild(qCard(q))); }
+function openSettings(){
+  settingsOpen=true; errEl.textContent="";
+  document.querySelector(`input[name=mode][value=${settings.mode}]`).checked=true;
+  $("#setTotal").value=settings.total; $("#setDwell").value=settings.dwell;
+  fillEditor(settings.questions);
+  $("#settings").classList.remove("hidden"); showTab("umum");
+}
+function showTab(name){
+  document.querySelectorAll("#settings [data-tab]").forEach(el=>{ el.hidden=el.dataset.tab!==name; });
+  document.querySelectorAll(".stab").forEach(b=>{ const on=b.dataset.go===name; b.setAttribute("aria-selected",on); b.tabIndex=on?0:-1; });
+  $("#settings").scrollTop=0;
+}
+document.querySelectorAll(".stab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.go)));
+$(".stabs").addEventListener("keydown",e=>{
+  if(e.key!=="ArrowRight"&&e.key!=="ArrowLeft") return;
+  const t=[...document.querySelectorAll(".stab")], i=t.findIndex(b=>b.getAttribute("aria-selected")==="true");
+  const n=t[(i+(e.key==="ArrowRight"?1:t.length-1))%t.length]; n.click(); n.focus();
+});
+showTab("umum");
+function closeSettings(){ settingsOpen=false; $("#settings").classList.add("hidden"); }
+function collectEditor(){
+  const qs=[], cards=[...listEl.querySelectorAll(".qcard")];
+  for(let i=0;i<cards.length;i++){
+    const c=cards[i], tag=`Soal ${i+1}: `;
+    const emoji=c.querySelector(".emo").value.trim(), text=c.querySelector(".qt").value.trim(), fb=c.querySelector(".fbk").value.trim();
+    const ots=[...c.querySelectorAll(".ot")].map(e=>e.value.trim());
+    const ai=+(c.querySelector("input[type=radio]:checked")?.value??0);
+    if(!text&&!emoji&&!fb&&!ots.some(Boolean)) continue;   // kartu kosong diabaikan
+    const filled=ots.filter(Boolean);
+    if(!text) return {error:tag+"teks soal belum diisi."};
+    if(filled.length<2) return {error:tag+"isi minimal 2 pilihan."};
+    if(!ots[ai]) return {error:tag+"pilihan yang ditandai benar masih kosong."};
+    if(new Set(filled).size!==filled.length) return {error:tag+"ada pilihan yang sama."};
+    qs.push({emoji,text,options:filled,answer:ots[ai],fb});
+  }
+  return {questions:qs};
+}
+$("#gear").onclick=openSettings;
+$("#sCancel").onclick=closeSettings;
+$("#sAdd").onclick=()=>{ const c=qCard(); listEl.appendChild(c); c.scrollIntoView({behavior:"smooth",block:"center"}); c.querySelector(".qt").focus(); };
+$("#sCopy").onclick=async()=>{
+  if(listEl.querySelector(".qcard")&&!(await uiDialog({icon:"📋",title:"Ganti daftar soal?",message:"Daftar soal di editor akan diganti dengan soal bawaan sistem sebagai contoh.",confirmText:"Ya, ganti",cancelText:"Batal"}))) return;
+  fillEditor([
+    ...ANIMALS.map(a=>({emoji:a[0],text:`${a[1]} termasuk hewan…`,options:CATS,answer:a[2],fb:`${a[3]} → ${a[2]}`})),
+    ...CONCEPTS.map(c=>({emoji:c.emoji,text:c.text,options:c.options,answer:c.answer,fb:c.fb}))
+  ]);
+};
+function saveFromEditor(close){
+  const r=collectEditor(); if(r.error){ errEl.textContent="⚠️ "+r.error; return false; }
+  const mode=document.querySelector("input[name=mode]:checked").value;
+  const total=parseInt($("#setTotal").value,10), dwell=parseFloat($("#setDwell").value);
+  if(!(total>=1&&total<=50)) { errEl.textContent="⚠️ Jumlah soal harus 1–50."; return; }
+  if(!(dwell>=0.5&&dwell<=3)) { errEl.textContent="⚠️ Lama menahan telunjuk harus 0.5–3 detik."; return; }
+  if(mode==="custom"&&!r.questions.length){ errEl.textContent="⚠️ Belum ada soal buatan. Tambahkan soal atau pilih soal bawaan sistem."; return; }
+  settings={mode,total,dwell,questions:r.questions};
+  if(!persistSettings()){ errEl.textContent="⚠️ Gagal menyimpan (penyimpanan browser diblokir?). Pengaturan hanya berlaku sampai halaman ditutup."; applySettings(); return; }
+  applySettings(); if(close) closeSettings(); return true;
+}
+$("#sSave").onclick=()=>saveFromEditor(true);
+$("#sReset").onclick=async()=>{
+  if(!(await uiDialog({icon:"🗑️",title:"Hapus semua pengaturan?",message:"Soal buatan dan pengaturan lain akan dihapus dari browser ini, lalu game kembali memakai soal bawaan sistem.",confirmText:"Ya, hapus",cancelText:"Batal",tone:"danger"}))) return;
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  settings=defaultSettings(); applySettings(); closeSettings();
+};
+$("#sExport").onclick=()=>{
+  const r=collectEditor(); if(r.error){ errEl.textContent="⚠️ "+r.error; return; }
+  const blob=new Blob([JSON.stringify({questions:r.questions},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="soal-kuis-formatif.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+$("#sImport").onclick=()=>$("#sFile").click();
+$("#sFile").onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const j=JSON.parse(await f.text());
+    const qs=(Array.isArray(j)?j:j.questions||[]).map(cleanQuestion).filter(Boolean);
+    if(!qs.length) throw new Error("tidak ada soal valid");
+    fillEditor(qs); document.querySelector("input[name=mode][value=custom]").checked=true;
+    errEl.textContent=`✅ ${qs.length} soal diimpor. Klik Simpan untuk menerapkan.`;
+  }catch(err){ errEl.textContent="⚠️ File tidak valid: "+err.message; }
+};
+/* ---------- Ekspor / Impor Word (.docx) ---------- */
+const W_NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+let _zipLib=null;
+async function getZip(){
+  if(!_zipLib) _zipLib=(await import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm")).default;
+  return _zipLib;
+}
+const xe=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const COLS=[["No",500],["Emoji",800],["Soal",3000],["Pilihan A",1700],["Pilihan B",1700],["Pilihan C",1700],["Pilihan D",1700],["Jawaban (A/B/C/D)",1100],["Penjelasan",2400]];
+const wCell=(t,w,head)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${head?'<w:shd w:val="clear" w:color="auto" w:fill="D9EAD3"/>':""}</w:tcPr><w:p><w:r>${head?"<w:rPr><w:b/></w:rPr>":""}<w:t xml:space="preserve">${xe(t)}</w:t></w:r></w:p></w:tc>`;
+const wPara=(t,bold,sz)=>`<w:p><w:r><w:rPr>${bold?"<w:b/>":""}<w:sz w:val="${sz}"/></w:rPr><w:t xml:space="preserve">${xe(t)}</w:t></w:r></w:p>`;
+async function downloadDocx(qs,filename){
+  const Z=await getZip(), z=new Z();
+  const rows=[`<w:tr>${COLS.map(c=>wCell(c[0],c[1],true)).join("")}</w:tr>`];
+  qs.forEach((q,i)=>{
+    const vals=[String(i+1),q.emoji||"",q.text,...[0,1,2,3].map(k=>q.options[k]||""),"ABCD"[q.options.indexOf(q.answer)]||"",q.fb||""];
+    rows.push(`<w:tr>${vals.map((v,k)=>wCell(v,COLS[k][1],false)).join("")}</w:tr>`);
+  });
+  const bd=n=>`<w:${n} w:val="single" w:sz="4" w:space="0" w:color="888888"/>`;
+  const docXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W_NS}"><w:body>`
+    +wPara("Bank Soal – Game Kuis Formatif",true,32)
+    +wPara("Petunjuk: satu soal per baris. Isi 2–4 pilihan (Pilihan A–D), lalu tulis huruf jawaban benar (A/B/C/D). Kolom Emoji dan Penjelasan boleh kosong. Jangan ubah judul kolom.",false,20)
+    +`<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(bd).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${COLS.map(c=>`<w:gridCol w:w="${c[1]}"/>`).join("")}</w:tblGrid>${rows.join("")}</w:tbl><w:p/>`
+    +`<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  z.file("word/document.xml",docXml);
+  const blob=await z.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function parseDocx(file){
+  const Z=await getZip(), z=await Z.loadAsync(await file.arrayBuffer());
+  const f=z.file("word/document.xml"); if(!f) throw new Error("bukan file .docx yang valid");
+  const doc=new DOMParser().parseFromString(await f.async("string"),"application/xml");
+  const tbl=doc.getElementsByTagNameNS(W_NS,"tbl")[0];
+  if(!tbl) throw new Error("tabel soal tidak ditemukan (gunakan Template Word)");
+  const kids=(n,name)=>[...n.childNodes].filter(c=>c.localName===name);
+  const cellText=tc=>[...tc.getElementsByTagNameNS(W_NS,"p")].map(p=>[...p.getElementsByTagNameNS(W_NS,"t")].map(t=>t.textContent).join("")).join(" ").trim();
+  const rows=kids(tbl,"tr").map(tr=>kids(tr,"tc").map(cellText));
+  let map={emoji:1,text:2,opt:[3,4,5,6],ans:7,fb:8}, start=0;
+  const h=rows[0]||[];
+  if(h.some(c=>/soal/i.test(c))&&h.some(c=>/jawaban/i.test(c))){
+    start=1;
+    const find=re=>h.findIndex(c=>re.test(c));
+    map={emoji:find(/emoji/i),text:find(/^\s*(teks\s*)?soal\s*$/i),opt:["a","b","c","d"].map(l=>find(new RegExp("pilihan\\s*"+l,"i"))),ans:find(/jawaban/i),fb:find(/penjelasan|pembahasan/i)};
+    if(map.text<0) throw new Error("kolom 'Soal' tidak ditemukan");
+  }
+  const qs=[]; let skipped=0;
+  for(const r of rows.slice(start)){
+    if(!r.some(Boolean)) continue;
+    const g=i=>i>=0?(r[i]||""):"";
+    const options=map.opt.map(g), ansRaw=g(map.ans).trim();
+    const answer=/^[A-D]$/i.test(ansRaw)?(options[ansRaw.toUpperCase().charCodeAt(0)-65]||"")
+      :(options.find(o=>o&&o.toLowerCase()===ansRaw.toLowerCase())||"");
+    const q=cleanQuestion({emoji:g(map.emoji),text:g(map.text),options:options.filter(Boolean),answer,fb:g(map.fb)});
+    q?qs.push(q):skipped++;
+  }
+  return {qs,skipped};
+}
+$("#wExport").onclick=async()=>{
+  const r=collectEditor(); if(r.error){ errEl.textContent="⚠️ "+r.error; return; }
+  if(!r.questions.length){ errEl.textContent="⚠️ Belum ada soal di editor. Gunakan 'Unduh template Word' atau 'Salin soal bawaan sebagai contoh'."; return; }
+  try{ await downloadDocx(r.questions,"soal-kuis-formatif.docx"); errEl.textContent=`✅ ${r.questions.length} soal diekspor ke Word.`; }
+  catch(e){ errEl.textContent="⚠️ Gagal membuat file Word (perlu internet untuk memuat pustaka): "+e.message; }
+};
+$("#wTemplate").onclick=async()=>{
+  const s=[ANIMALS[0],ANIMALS[9],ANIMALS[17]].map(a=>({emoji:a[0],text:`${a[1]} termasuk hewan…`,options:CATS,answer:a[2],fb:`${a[3]} → ${a[2]}`}));
+  s.push({emoji:CONCEPTS[0].emoji,text:CONCEPTS[0].text,options:CONCEPTS[0].options,answer:CONCEPTS[0].answer,fb:CONCEPTS[0].fb});
+  try{ await downloadDocx(s,"template-soal-kuis-formatif.docx"); errEl.textContent="✅ Template diunduh. Edit tabelnya di Word, lalu Impor Word."; }
+  catch(e){ errEl.textContent="⚠️ Gagal membuat template: "+e.message; }
+};
+$("#wImport").onclick=()=>$("#wFile").click();
+$("#wFile").onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const {qs,skipped}=await parseDocx(f);
+    if(!qs.length) throw new Error("tidak ada soal valid yang terbaca");
+    qs.forEach(q=>listEl.appendChild(qCard(q)));
+    document.querySelector("input[name=mode][value=custom]").checked=true;
+    errEl.textContent=`✅ ${qs.length} soal diimpor dari Word dan ditambahkan ke daftar`+(skipped?` (${skipped} baris dilewati karena tidak lengkap)`:"")+". Klik Simpan untuk menerapkan.";
+  }catch(err){ errEl.textContent="⚠️ Gagal impor Word: "+err.message; }
+};
+
+/* ---------- Generate Soal AI ---------- */
+const AI_LS="arHewan.ai.v1";
+const AI_MODEL={claude:"claude-sonnet-5-5",gemini:"gemini-2.5-flash",local:""};
+let aiGenerated=[];
+const aiMsg=t=>{ $("#aiMsg").textContent=t; };
+const aiTotalN=()=>Math.max(1,Math.min(40,parseInt($("#aiN").value,10)||10));
+function aiProvChanged(keep){
+  const p=$("#aiProv").value;
+  $("#aiKeyBox").hidden=p==="local"; $("#aiLocalNote").hidden=p!=="local";
+  if(!keep){ $("#aiModel").value=AI_MODEL[p]; $("#aiKey").value=""; $("#aiRemember").checked=false; }
+}
+function aiLoadPrefs(){
+  let p={}; try{ p=JSON.parse(localStorage.getItem(AI_LS)||"{}")||{}; }catch(e){}
+  if(p.prov) $("#aiProv").value=p.prov;
+  if(p.level) $("#aiLevel").value=p.level;
+  if(p.grade) $("#aiGrade").value=p.grade;
+  if(p.opt) $("#aiOpt").value=p.opt;
+  ["Mapel","Materi","Tp"].forEach(k=>{ const v=p[k.toLowerCase()]; if(v!=null) $("#ai"+k).value=v; });
+  if(p.n) $("#aiN").value=p.n;
+  $("#aiModel").value=p.model||AI_MODEL[$("#aiProv").value]||"";
+  $("#aiKey").value=p.key||""; $("#aiRemember").checked=!!p.key;
+  aiProvChanged(true);
+}
+function aiSavePrefs(){
+  const p={prov:$("#aiProv").value,level:$("#aiLevel").value,grade:$("#aiGrade").value,opt:$("#aiOpt").value,n:aiTotalN(),mapel:$("#aiMapel").value.trim(),materi:$("#aiMateri").value.trim(),tp:$("#aiTp").value.trim(),model:$("#aiModel").value.trim()};
+  if($("#aiRemember").checked) p.key=$("#aiKey").value.trim();
+  try{ localStorage.setItem(AI_LS,JSON.stringify(p)); }catch(e){}
+}
+function buildAiPrompt(info,level,grade,optN,note){
+  return `Kamu adalah guru SD ahli Kurikulum Merdeka. Buat ${info.n} soal pilihan ganda untuk asesmen formatif dengan data berikut:
+- Mata pelajaran: ${info.mapel}
+- Materi: ${info.materi}
+- Tujuan pembelajaran: ${info.tp}
+- Jenjang: Kelas ${grade} SD
+- Tingkat kesulitan: ${level}
+
+Aturan:
+- Semua soal harus sesuai dengan materi dan tujuan pembelajaran di atas, tidak keluar topik.
+- Bahasa Indonesia yang sesuai usia siswa; fakta harus akurat; hindari pertanyaan yang jawabannya ambigu atau diperdebatkan.
+- Setiap soal tepat ${optN} pilihan jawaban yang singkat (maksimal 30 karakter), hanya satu yang benar.
+- "answer" harus SAMA PERSIS dengan salah satu isi "options". Acak posisi jawaban benar.
+- "text" = kalimat soal yang jelas (maksimal 140 karakter). "emoji" = satu emoji yang relevan dengan soal. "fb" = penjelasan singkat 1 kalimat.
+- Variasikan soal, jangan ada soal ganda; sesuaikan tingkat berpikir dengan tingkat kesulitan.${note?`\n- Catatan guru: ${note}`:""}
+
+Keluarkan HANYA JSON valid (tanpa markdown dan tanpa teks lain) dengan bentuk:
+{"questions":[{"emoji":"🙂","text":"...","options":["..."],"answer":"...","fb":"..."}]}`;
+}
+async function callAI(prov,key,model,prompt){
+  if(prov==="claude"){
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model,max_tokens:6000,messages:[{role:"user",content:prompt}]})});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(j.error?.message||("HTTP "+res.status));
+    return (j.content||[]).map(b=>b.text||"").join("");
+  }
+  const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"content-type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:"application/json",temperature:.8}})});
+  const j=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(j.error?.message||("HTTP "+res.status));
+  return (j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");
+}
+function extractQuestions(raw){
+  let s=String(raw).replace(/```json|```/gi,"").trim();
+  const a=Math.min(...["{","["].map(ch=>{const i=s.indexOf(ch);return i<0?1e9:i;}));
+  const b=Math.max(s.lastIndexOf("}"),s.lastIndexOf("]"));
+  if(a>=1e9||b<a) throw new Error("jawaban AI bukan JSON");
+  const j=JSON.parse(s.slice(a,b+1));
+  return Array.isArray(j)?j:(j.questions||[]);
+}
+function genLocal(n,optN){
+  const c={recog:Math.ceil(n*.5),concept:Math.min(CONCEPTS.length,Math.round(n*.2))};
+  c.example=Math.max(0,n-c.recog-c.concept);
+  const lists=Object.fromEntries(CATS.map(k=>[k,shuffle(ANIMALS.filter(a=>a[2]===k))]));
+  let ci=0; const take=()=>{ for(let t=0;t<3;t++){ const k=CATS[ci++%3]; if(lists[k].length) return lists[k].pop(); } return null; };
+  const out=[];
+  for(let i=0;i<c.recog;i++){ const a=take(); if(!a) break; out.push({emoji:a[0],text:`${a[1]} termasuk hewan…`,options:CATS.slice(),answer:a[2],fb:`${a[3]} → ${a[2]}`}); }
+  shuffle(CONCEPTS).slice(0,c.concept).forEach(q=>out.push({emoji:q.emoji,text:q.text,options:CATS.slice(),answer:q.answer,fb:q.fb}));
+  for(let i=0;i<c.example;i++){
+    const cat=CATS[i%3], ok=lists[cat].pop(); if(!ok) break;
+    const others=shuffle(ANIMALS.filter(a=>a[2]!==cat)).slice(0,optN-1);
+    out.push({emoji:"🤔",text:`Manakah hewan berikut yang termasuk ${cat.toLowerCase()}?`,options:shuffle([ok[1],...others.map(a=>a[1])]),answer:ok[1],fb:`${ok[1]} termasuk ${cat}. ${ok[3]}`});
+  }
+  return out;
+}
+function renderAiResult(){
+  const box=$("#aiList"); box.innerHTML="";
+  aiGenerated.forEach((q,i)=>{
+    const d=document.createElement("label"); d.className="aitem";
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=true; cb.dataset.i=i;
+    const t=document.createElement("span"); t.textContent=`${i+1}. ${q.emoji?q.emoji+" ":""}${q.text}  [${q.options.join(" | ")}]  → Jawaban: ${q.answer}`;
+    d.append(cb,t); box.appendChild(d);
+  });
+  $("#aiCount").textContent=aiGenerated.length+" soal";
+  $("#aiResult").hidden=!aiGenerated.length;
+}
+const aiSelected=()=>[...$("#aiList").querySelectorAll("input:checked")].map(e=>aiGenerated[+e.dataset.i]);
+
+$("#aiProv").onchange=()=>aiProvChanged(false);
+$("#aiGo").onclick=async()=>{
+  const prov=$("#aiProv").value, optN=+$("#aiOpt").value, n=aiTotalN(); $("#aiN").value=n;
+  const mapel=$("#aiMapel").value.trim(), materi=$("#aiMateri").value.trim(), tp=$("#aiTp").value.trim();
+  if(prov!=="local"&&(!mapel||!materi||!tp)){ aiMsg("⚠️ Isi Mapel, Materi, dan Tujuan Pembelajaran dulu."); return; }
+  const key=$("#aiKey").value.trim(), model=$("#aiModel").value.trim();
+  if(prov!=="local"&&(!key||!model)){ aiMsg("⚠️ Isi API key dan nama model dulu."); return; }
+  const btn=$("#aiGo"); btn.disabled=true; btn.textContent="⏳ Membuat soal…"; aiMsg("");
+  try{
+    let qs, skipped=0;
+    if(prov==="local"){
+      qs=genLocal(n,optN).map(cleanQuestion).filter(Boolean);
+    }else{
+      const raw=await callAI(prov,key,model,buildAiPrompt({n,mapel,materi,tp},$("#aiLevel").value,$("#aiGrade").value,optN,$("#aiNote").value.trim()));
+      const arr=extractQuestions(raw);
+      qs=arr.map(cleanQuestion).filter(Boolean); skipped=arr.length-qs.length;
+    }
+    const seen=new Set(); qs=qs.filter(q=>{ const k=q.text.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
+    if(!qs.length) throw new Error("tidak ada soal valid yang dihasilkan");
+    aiGenerated=qs; renderAiResult(); aiSavePrefs();
+    aiMsg(`✅ ${qs.length} soal berhasil dibuat`+(skipped?` (${skipped} soal tidak valid dibuang)`:"")+(prov==="local"?" (dari bank bawaan: pengelompokan hewan)":"")+". Periksa, lalu Simpan atau Download Word.");
+    $("#aiResult").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }catch(e){ aiMsg("⚠️ Gagal generate: "+e.message); }
+  finally{ btn.disabled=false; btn.textContent="✨ Generate"; }
+};
+$("#aiSave").onclick=()=>{
+  const sel=aiSelected(); if(!sel.length){ aiMsg("⚠️ Tidak ada soal yang dicentang."); return; }
+  if(document.querySelector("input[name=aiMode]:checked").value==="replace") fillEditor(sel);
+  else{
+    const have=new Set([...listEl.querySelectorAll(".qt")].map(e=>e.value.trim().toLowerCase()));
+    sel.filter(q=>!have.has(q.text.toLowerCase())).forEach(q=>listEl.appendChild(qCard(q)));
+  }
+  document.querySelector("input[name=mode][value=custom]").checked=true;
+  aiMsg(saveFromEditor(false)?`✅ Tersimpan di localStorage. Sekarang ada ${settings.questions.length} soal buatan dan mode "soal buatan saya" aktif. Lihat di tab Daftar Soal.`:errEl.textContent);
+};
+$("#aiWord").onclick=async()=>{
+  const sel=aiSelected(); if(!sel.length){ aiMsg("⚠️ Tidak ada soal yang dicentang."); return; }
+  try{ await downloadDocx(sel,"soal-ai-kuis-formatif.docx"); aiMsg(`✅ ${sel.length} soal diunduh sebagai Word.`); }
+  catch(e){ aiMsg("⚠️ Gagal membuat Word (perlu internet untuk memuat pustaka): "+e.message); }
+};
+aiLoadPrefs();
+
+loadSettings();
+function startGame(){
+  qs=buildQuestions(); qi=0; score=0;
+  ["#intro","#ready","#end"].forEach(s=>$(s).classList.add("hidden"));
+  $("#hud").classList.remove("hidden"); $("#gear").classList.add("hidden");
+  showQuestion();
+}
+function showQuestion(){
+  locked=false;
+  const q=qs[qi];
+  $("#score").textContent="Skor: "+score;
+  $("#qnum").textContent=`Soal ${qi+1}/${TOTAL}`;
+  $("#qemoji").textContent=q.emoji; $("#qtext").textContent=q.text; $("#fb").textContent="";
+  const slots=q.options.length<=2?["pos-tl","pos-tr"]:q.options.length===3?["pos-tl","pos-tr","pos-bc"]:["pos-tl","pos-tr","pos-bl","pos-br"];
+  const order=shuffle(slots);
+  const box=$("#opts"); box.innerHTML="";
+  q.options.forEach((label,i)=>{
+    const b=document.createElement("div");
+    b.className="opt target "+order[i]; b.dataset.label=label;
+    b.innerHTML=`${label}<span class="fill"></span>`;
+    b.addEventListener("pick",()=>answer(b,q));
+    box.appendChild(b);
+  });
+}
+function answer(el,q){
+  if(locked) return; locked=true;
+  const ok=el.dataset.label===q.answer;
+  document.querySelectorAll(".opt").forEach(o=>{
+    o.classList.add("locked");
+    if(o.dataset.label===q.answer) o.classList.add("correct");
+  });
+  if(ok){ score+=10; sfxOK(); $("#fb").textContent="✅ Benar! "+q.fb; }
+  else { el.classList.add("wrong"); sfxNO(); $("#fb").textContent="❌ Belum tepat. "+q.fb; }
+  $("#score").textContent="Skor: "+score;
+  setTimeout(()=>{ qi++; qi<TOTAL?showQuestion():endGame(); },NEXT_DELAY);
+}
+function endGame(){
+  $("#hud").classList.add("hidden"); $("#opts").innerHTML=""; $("#gear").classList.remove("hidden");
+  const pct=score/(TOTAL*10);
+  const stars=pct>=.9?3:pct>=.6?2:pct>=.3?1:0;
+  $("#stars").textContent="⭐".repeat(stars)+"☆".repeat(3-stars);
+  $("#endTitle").textContent=pct>=.8?"Hebat sekali! 🎉":pct>=.5?"Bagus! Terus belajar 👍":"Ayo coba lagi 💪";
+  $("#endText").textContent=`Skormu: ${score} dari ${TOTAL*10}`;
+  $("#end").classList.remove("hidden");
+}
+
+/* ================= TOMBOL ================= */
+$("#btnCam").onclick=async()=>{
+  try{ await startCamera(); $("#intro").classList.add("hidden"); $("#ready").classList.remove("hidden"); }
+  catch(e){ console.error(e); statusEl.textContent="Kamera/model gagal dimuat. Pakai mouse/sentuh."; uiDialog({icon:"📷",title:"Kamera belum bisa dipakai",message:"Kamera atau model pelacak tangan tidak bisa dimuat.\n("+e.message+")\n\nKamu tetap bisa bermain dengan mouse atau sentuhan layar.",confirmText:"Mengerti",cancelText:null,tone:"danger"}); }
+};
+$("#btnMouse").onclick=()=>{ statusEl.textContent="Mode mouse/sentuh"; $("#intro").classList.add("hidden"); $("#ready").classList.remove("hidden"); };
+$("#btnStart").addEventListener("pick",startGame);
+$("#btnStart").addEventListener("click",startGame);
+$("#btnAgain").addEventListener("pick",startGame);
+$("#btnAgain").addEventListener("click",startGame);
+$("#quit").onclick=()=>{ $("#gear").classList.remove("hidden"); $("#hud").classList.add("hidden"); $("#opts").innerHTML=""; $("#end").classList.add("hidden"); $("#ready").classList.add("hidden"); $("#intro").classList.remove("hidden"); };
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
