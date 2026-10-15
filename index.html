@@ -168,9 +168,11 @@
     </div>
     <label>Catatan tambahan untuk AI (opsional)<input type="text" id="aiNote" placeholder="mis. gunakan hewan khas Indonesia"></label>
     <div id="aiKeyBox">
-      <label>API key<input type="password" id="aiKey" autocomplete="off" placeholder="Tempel API key di sini"></label>
+      <label>API key (kosongkan jika sudah terdeteksi)<input type="password" id="aiKey" autocomplete="off" placeholder="Tempel API key di sini"></label>
+      <p class="small" id="aiKeyStatus" aria-live="polite"></p>
+      <button class="sbtn dan" id="aiKeyDel" type="button" style="margin:2px 0 8px" hidden>🗑 Hapus API key tersimpan</button>
       <label>Model<input type="text" id="aiModel"></label>
-      <label><input type="checkbox" id="aiRemember">Ingat API key di browser ini (jangan dicentang di komputer bersama)</label>
+      <label><input type="checkbox" id="aiRemember">Simpan API key di browser ini setelah generate berhasil (jangan dicentang di komputer bersama)</label>
       <p class="small">Key dikirim langsung dari browser ke penyedia AI. Perlu internet.</p>
     </div>
     <p class="small" id="aiLocalNote" hidden>Tanpa AI: soal diambil dari bank bawaan khusus materi pengelompokan hewan berdasarkan makanan, sehingga isian Mapel, Materi, dan Tujuan Pembelajaran tidak dipakai.</p>
@@ -603,31 +605,64 @@ $("#wFile").onchange=async e=>{
 };
 
 /* ---------- Generate Soal AI ---------- */
-const AI_LS="arHewan.ai.v1";
+const AI_LS="arHewan.ai.v1", AI_KEYS_LS="arHewan.keys.v1";
 const AI_MODEL={claude:"claude-sonnet-5-5",gemini:"gemini-2.5-flash",local:""};
-let aiGenerated=[];
+const AI_NAME={claude:"Claude",gemini:"Gemini"};
+let aiGenerated=[], aiModels={};
 const aiMsg=t=>{ $("#aiMsg").textContent=t; };
 const aiTotalN=()=>Math.max(1,Math.min(40,parseInt($("#aiN").value,10)||10));
+
+/* ----- API key tersimpan di localStorage (satu per penyedia) ----- */
+function readKeys(){ try{ const k=JSON.parse(localStorage.getItem(AI_KEYS_LS)||"{}"); return k&&typeof k==="object"?k:{}; }catch(e){ return {}; } }
+function writeKeys(k){ try{ localStorage.setItem(AI_KEYS_LS,JSON.stringify(k)); return true; }catch(e){ return false; } }
+const savedKey=prov=>String(readKeys()[prov]||"");
+const maskKey=k=>k.length>12?k.slice(0,6)+"…"+k.slice(-4):"••••";
+function detectProvider(key){            // tebak penyedia dari awalan key
+  if(/^sk-ant-/i.test(key)) return "claude";
+  if(/^AIza[\w-]{20,}/.test(key)) return "gemini";
+  return null;
+}
+function aiKeyStatus(){
+  const prov=$("#aiProv").value, st=$("#aiKeyStatus"), del=$("#aiKeyDel");
+  if(prov==="local"){ st.textContent=""; del.hidden=true; return; }
+  const k=savedKey(prov), typed=$("#aiKey").value.trim();
+  if(typed) st.textContent="✏️ Memakai key yang baru diketik"+($("#aiRemember").checked?" (disimpan setelah generate berhasil).":" (tidak disimpan).");
+  else if(k) st.textContent=`🔑 API key ${AI_NAME[prov]} terdeteksi di browser ini (${maskKey(k)}). Tidak perlu diisi lagi.`;
+  else st.textContent=`Belum ada API key ${AI_NAME[prov]} tersimpan. Tempel key di atas.`;
+  del.hidden=!k;
+}
 function aiProvChanged(keep){
   const p=$("#aiProv").value;
   $("#aiKeyBox").hidden=p==="local"; $("#aiLocalNote").hidden=p!=="local";
-  if(!keep){ $("#aiModel").value=AI_MODEL[p]; $("#aiKey").value=""; $("#aiRemember").checked=false; }
+  if(!keep){ $("#aiModel").value=aiModels[p]||AI_MODEL[p]||""; $("#aiKey").value=""; }
+  aiKeyStatus();
 }
 function aiLoadPrefs(){
   let p={}; try{ p=JSON.parse(localStorage.getItem(AI_LS)||"{}")||{}; }catch(e){}
-  if(p.prov) $("#aiProv").value=p.prov;
+  if(p.key){   // migrasi format lama (satu key di prefs) ke penyimpanan per penyedia
+    const old=p.prov&&p.prov!=="local"?p.prov:(detectProvider(p.key)||"claude"), ks=readKeys();
+    if(!ks[old]){ ks[old]=p.key; writeKeys(ks); }
+    delete p.key; try{ localStorage.setItem(AI_LS,JSON.stringify(p)); }catch(e){}
+  }
+  aiModels=Object.assign({},p.models||{});
+  if(p.model&&p.prov&&p.prov!=="local"&&!aiModels[p.prov]) aiModels[p.prov]=p.model;
+  const keys=readKeys();
+  let prov=p.prov||"claude";
+  if(prov!=="local"&&!keys[prov]){ const other=["claude","gemini"].find(x=>keys[x]); if(other) prov=other; }  // pilih penyedia yang key-nya sudah tersimpan
+  $("#aiProv").value=prov;
   if(p.level) $("#aiLevel").value=p.level;
   if(p.grade) $("#aiGrade").value=p.grade;
   if(p.opt) $("#aiOpt").value=p.opt;
   ["Mapel","Materi","Tp"].forEach(k=>{ const v=p[k.toLowerCase()]; if(v!=null) $("#ai"+k).value=v; });
   if(p.n) $("#aiN").value=p.n;
-  $("#aiModel").value=p.model||AI_MODEL[$("#aiProv").value]||"";
-  $("#aiKey").value=p.key||""; $("#aiRemember").checked=!!p.key;
+  $("#aiRemember").checked=p.remember!==false;
+  $("#aiModel").value=aiModels[prov]||AI_MODEL[prov]||"";
   aiProvChanged(true);
 }
 function aiSavePrefs(){
-  const p={prov:$("#aiProv").value,level:$("#aiLevel").value,grade:$("#aiGrade").value,opt:$("#aiOpt").value,n:aiTotalN(),mapel:$("#aiMapel").value.trim(),materi:$("#aiMateri").value.trim(),tp:$("#aiTp").value.trim(),model:$("#aiModel").value.trim()};
-  if($("#aiRemember").checked) p.key=$("#aiKey").value.trim();
+  const prov=$("#aiProv").value;
+  if(prov!=="local") aiModels[prov]=$("#aiModel").value.trim();
+  const p={prov,level:$("#aiLevel").value,grade:$("#aiGrade").value,opt:$("#aiOpt").value,n:aiTotalN(),mapel:$("#aiMapel").value.trim(),materi:$("#aiMateri").value.trim(),tp:$("#aiTp").value.trim(),models:aiModels,remember:$("#aiRemember").checked};
   try{ localStorage.setItem(AI_LS,JSON.stringify(p)); }catch(e){}
 }
 function buildAiPrompt(info,level,grade,optN,note){
@@ -698,12 +733,28 @@ function renderAiResult(){
 const aiSelected=()=>[...$("#aiList").querySelectorAll("input:checked")].map(e=>aiGenerated[+e.dataset.i]);
 
 $("#aiProv").onchange=()=>aiProvChanged(false);
+$("#aiModel").addEventListener("input",()=>{ const p=$("#aiProv").value; if(p!=="local") aiModels[p]=$("#aiModel").value.trim(); });
+$("#aiRemember").addEventListener("change",()=>{ aiKeyStatus(); aiSavePrefs(); });
+$("#aiKey").addEventListener("input",()=>{      // deteksi otomatis penyedia dari key yang ditempel
+  const typed=$("#aiKey").value, d=detectProvider(typed.trim());
+  if(d&&d!==$("#aiProv").value){
+    $("#aiProv").value=d; aiProvChanged(false); $("#aiKey").value=typed;
+    aiMsg(`ℹ️ Key terdeteksi sebagai key ${AI_NAME[d]}, penyedia dipindah otomatis.`);
+  }
+  aiKeyStatus();
+});
+$("#aiKeyDel").onclick=async()=>{
+  const prov=$("#aiProv").value;
+  if(!(await uiDialog({icon:"🔑",title:`Hapus API key ${AI_NAME[prov]}?`,message:"Key yang tersimpan di browser ini akan dihapus. Kamu perlu menempelkannya lagi untuk generate soal.",confirmText:"Ya, hapus",cancelText:"Batal",tone:"danger"}))) return;
+  const ks=readKeys(); delete ks[prov]; writeKeys(ks); aiKeyStatus(); aiMsg("✅ API key tersimpan sudah dihapus.");
+};
 $("#aiGo").onclick=async()=>{
   const prov=$("#aiProv").value, optN=+$("#aiOpt").value, n=aiTotalN(); $("#aiN").value=n;
   const mapel=$("#aiMapel").value.trim(), materi=$("#aiMateri").value.trim(), tp=$("#aiTp").value.trim();
   if(prov!=="local"&&(!mapel||!materi||!tp)){ aiMsg("⚠️ Isi Mapel, Materi, dan Tujuan Pembelajaran dulu."); return; }
-  const key=$("#aiKey").value.trim(), model=$("#aiModel").value.trim();
-  if(prov!=="local"&&(!key||!model)){ aiMsg("⚠️ Isi API key dan nama model dulu."); return; }
+  const typed=$("#aiKey").value.trim(), key=typed||savedKey(prov), model=$("#aiModel").value.trim();
+  if(prov!=="local"&&!key){ aiMsg("⚠️ Belum ada API key. Tempel API key dulu."); return; }
+  if(prov!=="local"&&!model){ aiMsg("⚠️ Isi nama model dulu."); return; }
   const btn=$("#aiGo"); btn.disabled=true; btn.textContent="⏳ Membuat soal…"; aiMsg("");
   try{
     let qs, skipped=0;
@@ -716,10 +767,13 @@ $("#aiGo").onclick=async()=>{
     }
     const seen=new Set(); qs=qs.filter(q=>{ const k=q.text.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
     if(!qs.length) throw new Error("tidak ada soal valid yang dihasilkan");
-    aiGenerated=qs; renderAiResult(); aiSavePrefs();
-    aiMsg(`✅ ${qs.length} soal berhasil dibuat`+(skipped?` (${skipped} soal tidak valid dibuang)`:"")+(prov==="local"?" (dari bank bawaan: pengelompokan hewan)":"")+". Periksa, lalu Simpan atau Download Word.");
+    aiGenerated=qs; renderAiResult();
+    let keyNote="";
+    if(prov!=="local"&&typed&&$("#aiRemember").checked){ const ks=readKeys(); ks[prov]=typed; if(writeKeys(ks)){ $("#aiKey").value=""; keyNote=" API key disimpan di browser ini."; } }
+    aiSavePrefs(); aiKeyStatus();
+    aiMsg(`✅ ${qs.length} soal berhasil dibuat`+(skipped?` (${skipped} soal tidak valid dibuang)`:"")+(prov==="local"?" (dari bank bawaan: pengelompokan hewan)":"")+". Periksa, lalu Simpan atau Download Word."+keyNote);
     $("#aiResult").scrollIntoView({behavior:"smooth",block:"nearest"});
-  }catch(e){ aiMsg("⚠️ Gagal generate: "+e.message); }
+  }catch(e){ aiMsg("⚠️ Gagal generate: "+e.message+(!typed&&prov!=="local"&&/api.?key|auth|401|403|invalid|permission|credential/i.test(e.message)?" — API key tersimpan mungkin tidak valid. Tempel key baru atau hapus key tersimpan.":"")); }
   finally{ btn.disabled=false; btn.textContent="✨ Generate"; }
 };
 $("#aiSave").onclick=()=>{
